@@ -31,6 +31,19 @@ COMPOSIO_API_KEY=your_key node composio-example.mjs
 It connects to Composio and lists the toolkits available to your account — a quick
 way to confirm the SDK and your key work.
 
+### In the Claude Code cloud sandbox
+
+Node's built-in `fetch` doesn't use the sandbox's network proxy by default, so add
+`NODE_USE_ENV_PROXY=1`:
+
+```bash
+COMPOSIO_API_KEY=your_key NODE_USE_ENV_PROXY=1 node composio-example.mjs
+```
+
+This is only needed inside the cloud sandbox; on your own machine the plain command
+works. (The sandbox environment must also allow `composio.dev` and `*.composio.dev`
+in its network egress settings — the SDK talks to `backend.composio.dev`.)
+
 ## Using it locally instead (optional)
 
 If you'd rather use the interactive CLI with browser login, run these on your own
