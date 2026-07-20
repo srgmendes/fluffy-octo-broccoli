@@ -44,6 +44,19 @@ This is only needed inside the cloud sandbox; on your own machine the plain comm
 works. (The sandbox environment must also allow `composio.dev` and `*.composio.dev`
 in its network egress settings — the SDK talks to `backend.composio.dev`.)
 
+## Connecting an app (e.g. Outlook)
+
+Use `composio-connect.mjs` to connect an app to your account via OAuth. This needs
+an API key with **write** access to auth_configs.
+
+```bash
+COMPOSIO_API_KEY=your_key NODE_USE_ENV_PROXY=1 node composio-connect.mjs outlook you@example.com
+```
+
+It prints a login link — open it, sign in and approve, and the script waits until
+the connection is ACTIVE. Composio manages the OAuth, so you don't need to register
+your own Microsoft/Google/etc. app.
+
 ## Using it locally instead (optional)
 
 If you'd rather use the interactive CLI with browser login, run these on your own
