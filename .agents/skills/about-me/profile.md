@@ -27,7 +27,7 @@ _Working profile for the `about-me` skill. Voice and preferences only — no con
 ## Audiences & register
 
 - **Legal / formal correspondence** (demand letters, notices, contractual matters): the structured, clause-numbered register above. This is the well-evidenced default.
-- **HR / admin / internal** (workplace comms): **warmer and more personable.** Still clear and specific, but team-facing messages ease off the legal formality — approachable tone, plain language, less clause-and-cross-reference scaffolding. Match the person, not a template.
+- **HR / admin / internal** (workplace comms): **warmer but still professional** — not casual. Ease off the legal clause-and-cross-reference scaffolding, but keep a composed, courteous register: full greetings ("Dear team", "Kind regards"), measured phrasing, no emoji, no chatty filler or clichés ("hit the ground running", "my door's open"). Personable and approachable, yet buttoned-up and specific. Think professional courtesy, not friendly banter.
 
 ## Red lines
 
