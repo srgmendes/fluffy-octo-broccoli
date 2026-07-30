@@ -19,10 +19,23 @@ services:
       # Pipeline definitions for automated PDF workflows
       - ./data/pipeline:/pipeline
     environment:
-      # Disable features that require a license/pro account
-      DISABLE_ADDITIONAL_FEATURES: "true"
-      # Set to "true" and configure users to require login (see README)
-      SECURITY_ENABLELOGIN: "false"
+      # Additional features (incl. the security/login module) must be enabled
+      # for authentication to work. Keep "false" here since we need login.
+      DISABLE_ADDITIONAL_FEATURES: "false"
+      # Enable the security module in the Docker image (required for login).
+      DOCKER_ENABLE_SECURITY: "true"
+      # --- Authentication / login ---
+      # Require users to log in before using the app.
+      SECURITY_ENABLELOGIN: "true"
+      # Initial admin account, created on first startup only. Set these in a
+      # .env file (see .env.example) BEFORE the very first `docker compose up`.
+      # If left unset, Stirling-PDF falls back to admin / stirling.
+      SECURITY_INITIALLOGIN_USERNAME: "${STIRLING_ADMIN_USERNAME:-admin}"
+      SECURITY_INITIALLOGIN_PASSWORD: "${STIRLING_ADMIN_PASSWORD:-stirling}"
+      # Lock an account after this many failed attempts...
+      SECURITY_LOGINATTEMPTCOUNT: "5"
+      # ...for this many minutes.
+      SECURITY_LOGINRESETTIMEMINUTES: "120"
       # Default UI locale
       SYSTEM_DEFAULTLOCALE: "en-US"
       # Expose Prometheus-style metrics at /actuator/prometheus
