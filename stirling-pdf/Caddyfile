@@ -22,6 +22,30 @@
 	# Compress responses
 	encode zstd gzip
 
+	# Security headers applied to every response. `defer` makes these apply
+	# after the upstream response, so they reliably override any header
+	# Stirling-PDF sets itself (e.g. X-Frame-Options).
+	header {
+		defer
+		# Force HTTPS for a year. Browsers ignore this over plain HTTP or an
+		# untrusted cert. NOTE: with STIRLING_DOMAIN=localhost this can make the
+		# browser force HTTPS for *all* localhost apps once you trust the CA —
+		# drop this line if that's inconvenient for local development.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Prevent MIME-type sniffing
+		X-Content-Type-Options "nosniff"
+		# Clickjacking protection — only allow framing from the same origin
+		X-Frame-Options "SAMEORIGIN"
+		# Limit how much referrer information is sent cross-origin
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Disable the legacy (and buggy) browser XSS auditor, per modern guidance
+		X-XSS-Protection "0"
+		# Turn off browser features the app doesn't use
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# Don't advertise the server software
+		-Server
+	}
+
 	# HTTP Basic Authentication at the proxy edge, in front of (and in addition
 	# to) Stirling-PDF's own login. Credentials are injected from the
 	# proxy-auth.env file (see proxy-auth.env.example). The password is stored

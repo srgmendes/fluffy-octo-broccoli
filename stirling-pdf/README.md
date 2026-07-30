@@ -49,7 +49,7 @@ docker compose up -d          # recreate with the new image
 | Path                 | Purpose                                                              |
 | -------------------- | ------------------------------------------------------------------- |
 | `docker-compose.yml` | Stirling-PDF (pinned to `2.14.2`) + Caddy reverse proxy.            |
-| `Caddyfile`          | Reverse-proxy config with automatic HTTPS and basic auth.           |
+| `Caddyfile`          | Reverse-proxy config: HTTPS, basic auth, and security headers.      |
 | `.env.example`       | Template for admin credentials and domain — copy to `.env`.         |
 | `proxy-auth.env.example` | Template for the proxy's basic-auth credentials — copy to `proxy-auth.env`. |
 | `data/tessdata`      | Tesseract OCR language files (`*.traineddata`). Mounted read/write. |
@@ -151,11 +151,36 @@ docker compose up -d
 the hash's `$` characters need no escaping. To turn basic auth off entirely, remove
 the `basic_auth { ... }` block from the `Caddyfile` and `docker compose restart caddy`.
 
+### Security headers
+
+The proxy attaches a set of hardening headers to every response (in the `header`
+block of the `Caddyfile`). It uses Caddy's `defer` so these reliably override any
+header Stirling-PDF sets itself:
+
+| Header | Value | Purpose |
+| --- | --- | --- |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Force HTTPS for a year (HSTS). |
+| `X-Content-Type-Options` | `nosniff` | Block MIME-type sniffing. |
+| `X-Frame-Options` | `SAMEORIGIN` | Clickjacking protection. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limit cross-origin referrer leakage. |
+| `X-XSS-Protection` | `0` | Disable the legacy, buggy XSS auditor. |
+| `Permissions-Policy` | `geolocation=(), microphone=(), camera=()` | Turn off unused browser features. |
+| `Server` | *(removed)* | Don't advertise the server software. |
+
+> **HSTS on `localhost`:** once you trust Caddy's internal CA, the HSTS header can
+> make your browser force HTTPS for *all* `localhost` apps (not just this one). If
+> that interferes with other local development, remove the
+> `Strict-Transport-Security` line from the `Caddyfile`.
+
+A [Content-Security-Policy](https://developer.mozilla.org/docs/Web/HTTP/Headers/Content-Security-Policy)
+is intentionally **not** set by default — a strict CSP is application-specific and
+easily breaks Stirling-PDF's UI. Add and tune one in the `header` block if you need it.
+
 ### Customizing the proxy
 
-Edit the `Caddyfile` for extra behavior (custom headers, rate limits, etc.), then
-apply it with `docker compose restart caddy`. To expose Stirling-PDF directly on the
-host as well (e.g. for debugging), add a `ports: ["8080:8080"]` block to the
+Edit the `Caddyfile` for extra behavior (rate limits, extra headers, CSP, etc.),
+then apply it with `docker compose restart caddy`. To expose Stirling-PDF directly
+on the host as well (e.g. for debugging), add a `ports: ["8080:8080"]` block to the
 `stirling-pdf` service.
 
 ## Authentication
