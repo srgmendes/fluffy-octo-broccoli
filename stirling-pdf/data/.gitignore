@@ -1,0 +1,5 @@
+# Ignore runtime data written by the container, but keep the directory structure.
+*
+!.gitignore
+!*/
+!*/.gitkeep
