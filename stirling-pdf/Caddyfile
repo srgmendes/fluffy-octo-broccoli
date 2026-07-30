@@ -1,0 +1,27 @@
+# Caddy reverse proxy for Stirling-PDF with automatic HTTPS.
+#
+# The site address comes from the STIRLING_DOMAIN environment variable
+# (set in docker-compose.yml / your .env), defaulting to "localhost".
+#
+#   * localhost            -> Caddy uses its built-in internal CA (self-signed
+#                             root). HTTPS works immediately; trust Caddy's root
+#                             on the host to silence the browser warning.
+#   * a real public domain -> Caddy automatically provisions and renews a
+#                             Let's Encrypt certificate. Ports 80 and 443 must
+#                             be reachable from the internet, and DNS must point
+#                             at this host.
+#
+# For Let's Encrypt it's good practice to add a contact email so you get expiry
+# and problem notifications. Uncomment and set it:
+#
+#   {
+#       email you@example.com
+#   }
+
+{$STIRLING_DOMAIN:localhost} {
+	# Compress responses
+	encode zstd gzip
+
+	# Forward everything to the Stirling-PDF container over the internal network
+	reverse_proxy stirling-pdf:8080
+}

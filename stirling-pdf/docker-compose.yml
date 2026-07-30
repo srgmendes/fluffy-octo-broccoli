@@ -5,8 +5,11 @@ services:
     image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:2.14.2
     container_name: stirling-pdf
     restart: unless-stopped
-    ports:
-      - "8080:8080"
+    # Not published to the host — traffic reaches Stirling-PDF only through the
+    # Caddy reverse proxy below. To also expose it directly (e.g. for debugging),
+    # add:  ports: ["8080:8080"]
+    expose:
+      - "8080"
     volumes:
       # OCR language data (Tesseract) — add .traineddata files here for extra languages
       - ./data/tessdata:/usr/share/tessdata
@@ -55,6 +58,37 @@ services:
     networks:
       - stirling-network
 
+  # Reverse proxy terminating HTTPS in front of Stirling-PDF.
+  # - STIRLING_DOMAIN=localhost (default): Caddy serves HTTPS with its own
+  #   internal CA — trusted on the host once you run the caddy-trust helper
+  #   (see README), otherwise the browser shows a one-time warning.
+  # - STIRLING_DOMAIN=your.public.domain: Caddy automatically obtains and
+  #   renews a Let's Encrypt certificate (ports 80 and 443 must be reachable).
+  caddy:
+    image: caddy:2-alpine
+    container_name: stirling-caddy
+    restart: unless-stopped
+    depends_on:
+      stirling-pdf:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      STIRLING_DOMAIN: "${STIRLING_DOMAIN:-localhost}"
+    volumes:
+      # Reverse-proxy configuration
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Persist issued certificates and ACME account data across restarts
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - stirling-network
+
 networks:
   stirling-network:
     driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
