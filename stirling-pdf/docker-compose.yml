@@ -65,7 +65,13 @@ services:
   # - STIRLING_DOMAIN=your.public.domain: Caddy automatically obtains and
   #   renews a Let's Encrypt certificate (ports 80 and 443 must be reachable).
   caddy:
-    image: caddy:2-alpine
+    # Built from Caddy.Dockerfile to include the caddy-ratelimit module, which
+    # isn't part of stock Caddy. Run `docker compose up -d --build` after
+    # changing the Dockerfile. The image: line just names the built image.
+    build:
+      context: .
+      dockerfile: Caddy.Dockerfile
+    image: stirling-pdf-caddy:local
     container_name: stirling-caddy
     restart: unless-stopped
     depends_on:
@@ -76,6 +82,10 @@ services:
       - "443:443"
     environment:
       STIRLING_DOMAIN: "${STIRLING_DOMAIN:-localhost}"
+      # Per-IP rate limit: max requests (events) per time window. Tune for your
+      # usage — too low can throttle heavy pages; too high weakens protection.
+      RATE_LIMIT_EVENTS: "${RATE_LIMIT_EVENTS:-200}"
+      RATE_LIMIT_WINDOW: "${RATE_LIMIT_WINDOW:-1m}"
     # HTTP Basic Auth credentials for the proxy. Loaded from proxy-auth.env
     # (see proxy-auth.env.example) — passed literally, so the bcrypt hash's
     # `$` characters need no escaping. required: false lets the stack start
