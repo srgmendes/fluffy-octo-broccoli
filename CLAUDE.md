@@ -145,9 +145,16 @@ runtime:
 - `.claude/skills/<name>` are **symlinks** into `.agents/skills/` so Claude Code
   discovers them.
 
-Currently vendored: `find-skills` (from `vercel-labs/skills`) and `research`
-(from `mattpocock/skills`). When adding or updating a vendored skill, update
-`skills-lock.json` (including the hash) alongside the files, and keep the
+Currently present: `find-skills` (from `vercel-labs/skills`) and `research`
+(from `mattpocock/skills`), both vendored from GitHub and tracked in
+`skills-lock.json`; plus `chief-content-officer`, a **local** skill added
+directly to the repo (not from a GitHub source, so it has no `skills-lock.json`
+entry).
+
+When adding or updating a GitHub-vendored skill, update `skills-lock.json`
+(including the hash) alongside the files. When adding a local skill, just place
+`SKILL.md` under `.agents/skills/<name>/` and create the matching
+`.claude/skills/<name>` symlink — no lockfile entry. Either way, keep the
 `.claude/skills` symlink in place.
 
 ## Conventions & workflow
