@@ -46,6 +46,20 @@
 		-Server
 	}
 
+	# Per-client-IP rate limiting (provided by the caddy-ratelimit module that is
+	# compiled into the image — see Caddy.Dockerfile). Requests exceeding the
+	# limit receive HTTP 429 with a Retry-After header. By default this module is
+	# ordered *before* basic_auth, so it also throttles unauthenticated floods
+	# (e.g. brute-force attempts against the login). Tune the limit with the
+	# RATE_LIMIT_EVENTS / RATE_LIMIT_WINDOW environment variables.
+	rate_limit {
+		zone stirling_per_ip {
+			key    {client_ip}
+			events {$RATE_LIMIT_EVENTS:200}
+			window {$RATE_LIMIT_WINDOW:1m}
+		}
+	}
+
 	# HTTP Basic Authentication at the proxy edge, in front of (and in addition
 	# to) Stirling-PDF's own login. Credentials are injected from the
 	# proxy-auth.env file (see proxy-auth.env.example). The password is stored

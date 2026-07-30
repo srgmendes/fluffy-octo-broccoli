@@ -18,8 +18,12 @@ Login is **enabled** by default. Set your admin credentials first:
 
 ```bash
 cp .env.example .env      # then edit .env and set a real password
-docker compose up -d
+docker compose up -d --build
 ```
+
+> The `--build` flag builds the custom Caddy image (it bundles the rate-limiting
+> module). You only need it the first time and whenever `Caddy.Dockerfile`
+> changes; plain `docker compose up -d` is fine otherwise.
 
 Then open <https://localhost> and sign in with the credentials from your `.env`
 (defaults to `admin` / `stirling` if you skip the `.env` step — change it
@@ -49,7 +53,8 @@ docker compose up -d          # recreate with the new image
 | Path                 | Purpose                                                              |
 | -------------------- | ------------------------------------------------------------------- |
 | `docker-compose.yml` | Stirling-PDF (pinned to `2.14.2`) + Caddy reverse proxy.            |
-| `Caddyfile`          | Reverse-proxy config: HTTPS, basic auth, and security headers.      |
+| `Caddyfile`          | Reverse-proxy config: HTTPS, basic auth, security headers, rate limit. |
+| `Caddy.Dockerfile`   | Builds Caddy with the `caddy-ratelimit` module compiled in.         |
 | `.env.example`       | Template for admin credentials and domain — copy to `.env`.         |
 | `proxy-auth.env.example` | Template for the proxy's basic-auth credentials — copy to `proxy-auth.env`. |
 | `data/tessdata`      | Tesseract OCR language files (`*.traineddata`). Mounted read/write. |
@@ -176,12 +181,37 @@ A [Content-Security-Policy](https://developer.mozilla.org/docs/Web/HTTP/Headers/
 is intentionally **not** set by default — a strict CSP is application-specific and
 easily breaks Stirling-PDF's UI. Add and tune one in the `header` block if you need it.
 
+### Rate limiting
+
+The proxy limits how many requests a single client IP can make, returning
+**HTTP 429** (with a `Retry-After` header) once the limit is exceeded. This guards
+against request floods and brute-force attempts — and because the limiter runs
+*before* basic auth, it throttles unauthenticated traffic too.
+
+Rate limiting isn't part of stock Caddy, so the image is built from
+`Caddy.Dockerfile`, which compiles in the
+[`caddy-ratelimit`](https://github.com/mholt/caddy-ratelimit) module via `xcaddy`.
+That's why the first start needs `docker compose up -d --build`.
+
+The limit is per client IP and configurable in `.env`:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RATE_LIMIT_EVENTS` | `200` | Max requests per window, per IP. |
+| `RATE_LIMIT_WINDOW` | `1m` | The sliding window (e.g. `1m`, `30s`, `1h`). |
+
+Raise `RATE_LIMIT_EVENTS` if heavy pages get throttled; lower it to tighten
+protection. After changing values, `docker compose up -d` to apply. If your setup
+sits behind another proxy/load balancer, configure Caddy
+[`trusted_proxies`](https://caddyserver.com/docs/caddyfile/options#trusted-proxies)
+so `{client_ip}` reflects the real client rather than the upstream proxy.
+
 ### Customizing the proxy
 
-Edit the `Caddyfile` for extra behavior (rate limits, extra headers, CSP, etc.),
-then apply it with `docker compose restart caddy`. To expose Stirling-PDF directly
-on the host as well (e.g. for debugging), add a `ports: ["8080:8080"]` block to the
-`stirling-pdf` service.
+Edit the `Caddyfile` for extra behavior (extra headers, CSP, more rate-limit
+zones, etc.), then apply it with `docker compose restart caddy`. To expose
+Stirling-PDF directly on the host as well (e.g. for debugging), add a
+`ports: ["8080:8080"]` block to the `stirling-pdf` service.
 
 ## Authentication
 
