@@ -22,6 +22,14 @@
 	# Compress responses
 	encode zstd gzip
 
+	# HTTP Basic Authentication at the proxy edge, in front of (and in addition
+	# to) Stirling-PDF's own login. Credentials are injected from the
+	# proxy-auth.env file (see proxy-auth.env.example). The password is stored
+	# as a bcrypt hash, never in plaintext. Requires Caddy 2.8+ (basic_auth).
+	basic_auth {
+		{$PROXY_BASICAUTH_USERNAME:admin} {$PROXY_BASICAUTH_HASH:$2b$14$76mMm6brH9Rs40yrjHQ/M.5kB7DrepBPTF/6I3gEsJBPOejV9upfy}
+	}
+
 	# Forward everything to the Stirling-PDF container over the internal network
 	reverse_proxy stirling-pdf:8080
 }
