@@ -76,6 +76,13 @@ services:
       - "443:443"
     environment:
       STIRLING_DOMAIN: "${STIRLING_DOMAIN:-localhost}"
+    # HTTP Basic Auth credentials for the proxy. Loaded from proxy-auth.env
+    # (see proxy-auth.env.example) — passed literally, so the bcrypt hash's
+    # `$` characters need no escaping. required: false lets the stack start
+    # with the built-in default (admin / changeme) until you create the file.
+    env_file:
+      - path: ./proxy-auth.env
+        required: false
     volumes:
       # Reverse-proxy configuration
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

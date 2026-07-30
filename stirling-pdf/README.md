@@ -28,8 +28,12 @@ immediately).
 Traffic is served over HTTPS by the bundled Caddy reverse proxy. On `localhost`
 Caddy uses its own internal CA, so your browser shows a one-time certificate
 warning until you trust that CA — see [Reverse proxy & HTTPS](#reverse-proxy--https).
-For a public domain, HTTPS certificates are obtained automatically. See
-[Authentication](#authentication) to customize or disable login.
+For a public domain, HTTPS certificates are obtained automatically.
+
+The proxy also enforces **HTTP Basic Auth** — you'll get a browser credentials
+prompt first (default `admin` / `changeme`, **change it**), then Stirling-PDF's own
+login. See [Basic authentication](#basic-authentication) and
+[Authentication](#authentication).
 
 To view logs, stop, or update:
 
@@ -45,8 +49,9 @@ docker compose up -d          # recreate with the new image
 | Path                 | Purpose                                                              |
 | -------------------- | ------------------------------------------------------------------- |
 | `docker-compose.yml` | Stirling-PDF (pinned to `2.14.2`) + Caddy reverse proxy.            |
-| `Caddyfile`          | Reverse-proxy config with automatic HTTPS.                          |
+| `Caddyfile`          | Reverse-proxy config with automatic HTTPS and basic auth.           |
 | `.env.example`       | Template for admin credentials and domain — copy to `.env`.         |
+| `proxy-auth.env.example` | Template for the proxy's basic-auth credentials — copy to `proxy-auth.env`. |
 | `data/tessdata`      | Tesseract OCR language files (`*.traineddata`). Mounted read/write. |
 | `data/configs`       | App configuration (`settings.yml`, `custom_settings.yml`).          |
 | `data/customFiles`   | Custom UI / branding assets.                                        |
@@ -124,12 +129,34 @@ Caddy will automatically obtain and renew a publicly trusted Let's Encrypt
 certificate — no manual cert management. To receive expiry/problem notifications,
 uncomment the `email` global option in the `Caddyfile`.
 
+### Basic authentication
+
+The proxy enforces HTTP Basic Auth before any request reaches Stirling-PDF — a
+gate in front of (and in addition to) Stirling's own login. The password is stored
+as a **bcrypt hash**, never in plaintext.
+
+Out of the box it accepts `admin` / `changeme` (the hash baked into the
+`Caddyfile` as a fallback). **Change it** by supplying your own credentials:
+
+```bash
+cp proxy-auth.env.example proxy-auth.env
+
+# generate a hash for your password...
+docker run --rm caddy:2-alpine caddy hash-password --plaintext 'your-strong-password'
+# ...and put the username + hash into proxy-auth.env, then:
+docker compose up -d
+```
+
+`proxy-auth.env` is git-ignored and passed to Caddy verbatim (via `env_file`), so
+the hash's `$` characters need no escaping. To turn basic auth off entirely, remove
+the `basic_auth { ... }` block from the `Caddyfile` and `docker compose restart caddy`.
+
 ### Customizing the proxy
 
-Edit the `Caddyfile` for extra behavior (custom headers, rate limits, basic auth,
-etc.), then apply it with `docker compose restart caddy`. To expose Stirling-PDF
-directly on the host as well (e.g. for debugging), add a `ports: ["8080:8080"]`
-block to the `stirling-pdf` service.
+Edit the `Caddyfile` for extra behavior (custom headers, rate limits, etc.), then
+apply it with `docker compose restart caddy`. To expose Stirling-PDF directly on the
+host as well (e.g. for debugging), add a `ports: ["8080:8080"]` block to the
+`stirling-pdf` service.
 
 ## Authentication
 
