@@ -1,6 +1,8 @@
 services:
   stirling-pdf:
-    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
+    # Pinned to a specific release for reproducible deployments.
+    # Check https://github.com/Stirling-Tools/Stirling-PDF/releases for newer tags.
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:2.14.2
     container_name: stirling-pdf
     restart: unless-stopped
     ports:

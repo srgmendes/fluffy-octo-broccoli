@@ -33,7 +33,7 @@ docker compose up -d          # recreate with the new image
 
 | Path                 | Purpose                                                              |
 | -------------------- | ------------------------------------------------------------------- |
-| `docker-compose.yml` | Service definition using `stirlingtools/stirling-pdf:latest`.       |
+| `docker-compose.yml` | Service definition pinned to `stirlingtools/stirling-pdf:2.14.2`.   |
 | `data/tessdata`      | Tesseract OCR language files (`*.traineddata`). Mounted read/write. |
 | `data/configs`       | App configuration (`settings.yml`, `custom_settings.yml`).          |
 | `data/customFiles`   | Custom UI / branding assets.                                        |
@@ -73,7 +73,9 @@ from the [tessdata repository](https://github.com/tesseract-ocr/tessdata). Engli
 
 ## Notes
 
-- This runs the `:latest` tag. For reproducible deployments, pin a specific version
-  tag (e.g. `stirlingtools/stirling-pdf:1.0.0`) instead.
+- This is pinned to `stirlingtools/stirling-pdf:2.14.2` for reproducible deployments.
+  To upgrade, bump the tag in `docker-compose.yml` to a newer
+  [release](https://github.com/Stirling-Tools/Stirling-PDF/releases), then run
+  `docker compose pull && docker compose up -d`.
 - Stirling-PDF processes files locally inside the container; nothing is sent to an
   external service.
