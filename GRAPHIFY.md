@@ -21,6 +21,14 @@ Graphify has two halves, and this repo tracks the one that belongs in git:
    uv tool install graphifyy        # installs `graphify` + `graphify-mcp` (or: pipx install graphifyy)
    ```
 
+   In **Claude Code on the web**, this install runs automatically: a
+   `SessionStart` hook (`.claude/hooks/session-start.sh`, registered in
+   `.claude/settings.json`) installs the CLI at session start so `/graphify`
+   works out of the box. The hook only runs in remote sessions
+   (`$CLAUDE_CODE_REMOTE`), is idempotent (skips if `graphify` is already on
+   `PATH`), and adds `~/.local/bin` to the session `PATH`. On a local machine,
+   install the CLI yourself with the command above.
+
 2. **The graphify skill** — bundled inside the `graphifyy` package and normally
    copied out by `graphify install`. That command targets a machine-global config
    dir (`~/.claude/skills/`), which does not survive the ephemeral Claude Code
