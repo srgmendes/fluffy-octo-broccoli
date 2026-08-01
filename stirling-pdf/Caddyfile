@@ -1,0 +1,73 @@
+# Caddy reverse proxy for Stirling-PDF with automatic HTTPS.
+#
+# The site address comes from the STIRLING_DOMAIN environment variable
+# (set in docker-compose.yml / your .env), defaulting to "localhost".
+#
+#   * localhost            -> Caddy uses its built-in internal CA (self-signed
+#                             root). HTTPS works immediately; trust Caddy's root
+#                             on the host to silence the browser warning.
+#   * a real public domain -> Caddy automatically provisions and renews a
+#                             Let's Encrypt certificate. Ports 80 and 443 must
+#                             be reachable from the internet, and DNS must point
+#                             at this host.
+#
+# For Let's Encrypt it's good practice to add a contact email so you get expiry
+# and problem notifications. Uncomment and set it:
+#
+#   {
+#       email you@example.com
+#   }
+
+{$STIRLING_DOMAIN:localhost} {
+	# Compress responses
+	encode zstd gzip
+
+	# Security headers applied to every response. `defer` makes these apply
+	# after the upstream response, so they reliably override any header
+	# Stirling-PDF sets itself (e.g. X-Frame-Options).
+	header {
+		defer
+		# Force HTTPS for a year. Browsers ignore this over plain HTTP or an
+		# untrusted cert. NOTE: with STIRLING_DOMAIN=localhost this can make the
+		# browser force HTTPS for *all* localhost apps once you trust the CA —
+		# drop this line if that's inconvenient for local development.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Prevent MIME-type sniffing
+		X-Content-Type-Options "nosniff"
+		# Clickjacking protection — only allow framing from the same origin
+		X-Frame-Options "SAMEORIGIN"
+		# Limit how much referrer information is sent cross-origin
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Disable the legacy (and buggy) browser XSS auditor, per modern guidance
+		X-XSS-Protection "0"
+		# Turn off browser features the app doesn't use
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# Don't advertise the server software
+		-Server
+	}
+
+	# Per-client-IP rate limiting (provided by the caddy-ratelimit module that is
+	# compiled into the image — see Caddy.Dockerfile). Requests exceeding the
+	# limit receive HTTP 429 with a Retry-After header. By default this module is
+	# ordered *before* basic_auth, so it also throttles unauthenticated floods
+	# (e.g. brute-force attempts against the login). Tune the limit with the
+	# RATE_LIMIT_EVENTS / RATE_LIMIT_WINDOW environment variables.
+	rate_limit {
+		zone stirling_per_ip {
+			key    {client_ip}
+			events {$RATE_LIMIT_EVENTS:200}
+			window {$RATE_LIMIT_WINDOW:1m}
+		}
+	}
+
+	# HTTP Basic Authentication at the proxy edge, in front of (and in addition
+	# to) Stirling-PDF's own login. Credentials are injected from the
+	# proxy-auth.env file (see proxy-auth.env.example). The password is stored
+	# as a bcrypt hash, never in plaintext. Requires Caddy 2.8+ (basic_auth).
+	basic_auth {
+		{$PROXY_BASICAUTH_USERNAME:admin} {$PROXY_BASICAUTH_HASH:$2b$14$76mMm6brH9Rs40yrjHQ/M.5kB7DrepBPTF/6I3gEsJBPOejV9upfy}
+	}
+
+	# Forward everything to the Stirling-PDF container over the internal network
+	reverse_proxy stirling-pdf:8080
+}
