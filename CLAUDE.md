@@ -25,7 +25,9 @@ changes rarely cross these boundaries.
 ```
 .
 ├── free-claude-code/        # Free Claude Code install notes (docs only)
-│   └── README.md            # Sandbox/proxy-constrained install procedure
+│   ├── README.md            # Sandbox/proxy-constrained install procedure
+│   └── install-sandbox.sh   # Automates the sanctioned-path install
+
 ├── COMPOSIO.md              # Composio setup & usage docs
 ├── composio-example.mjs     # Lists Composio toolkits (smoke test for SDK + key)
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth

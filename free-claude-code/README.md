@@ -38,6 +38,15 @@ curl -fsSL "https://raw.githubusercontent.com/Alishahryar1/free-claude-code/main
 Then: `fcc-server` (start the proxy) → configure a provider in the Admin UI →
 `fcc-claude` (or `fcc-codex` / `fcc-pi`).
 
+### Windows
+
+```powershell
+& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/Alishahryar1/free-claude-code/main/scripts/install.ps1")))
+```
+
+On Windows and macOS the installer also drops a background desktop launcher
+(`fcc-desktop`) so the proxy can run without a terminal window.
+
 ## Install inside a restricted / proxied sandbox
 
 The Claude Code cloud sandbox routes all outbound HTTPS through a
@@ -47,6 +56,16 @@ procedure reaches the same end state using **only sanctioned lanes** — the git
 proxy (public GitHub reads), PyPI, and `static.crates.io` — and installs
 **Claude Code only** (Codex and Pi hosts are blocked; `claude` is already
 present in the sandbox).
+
+> **Shortcut:** [`install-sandbox.sh`](./install-sandbox.sh) in this directory
+> automates every step below (idempotent; re-run to update). From the repo root:
+>
+> ```bash
+> sh free-claude-code/install-sandbox.sh
+> ```
+>
+> Override `CLONE_DIR`, `TIKTOKEN_CACHE_DIR`, or `PYTHON_VERSION` via the
+> environment. The manual steps that follow are what the script does.
 
 Prefix commands with `NODE_USE_ENV_PROXY=1` so tools that use Node's built‑in
 fetch honour the proxy, matching the convention in `../COMPOSIO.md`.
@@ -132,6 +151,47 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8082/admin   # 200
 ```
 
 `GET /admin`, `/`, `/health`, and `/v1/models` all return `200`.
+
+## Configuring providers
+
+FCC talks to any **OpenAI‑compatible** Chat Completions endpoint. Configure
+providers in the Admin UI (`/admin`) or via a `.env` file; the picked chat model
+is set with `MODEL="<provider>/<model-id>"`. Providers ship preconfigured — you
+only supply a key (or a base URL for local ones). A sample of what's supported:
+
+| Kind | Providers (env var) |
+| --- | --- |
+| **Local, no key** | Ollama (`OLLAMA_BASE_URL`), LM Studio (`LM_STUDIO_BASE_URL`), llama.cpp (`LLAMACPP_BASE_URL`) |
+| **Hosted, API key** | OpenAI, Azure OpenAI, Gemini / Google AI Studio (`GEMINI_API_KEY`), DeepSeek, Mistral (+ Codestral), Groq, Cerebras, SambaNova, Fireworks, OpenRouter, Vercel AI Gateway, Hugging Face, Cohere, GitHub Models, NVIDIA NIM, Kimi, MiniMax, Z.ai, Cloudflare Workers AI, Ollama Cloud, … |
+| **Cloud IAM** | Google Vertex (`VERTEX_PROJECT_ID` + ADC), Amazon Bedrock (`AWS_BEARER_TOKEN_BEDROCK`) |
+
+Optional model‑tier routing sends each Claude tier to a different provider, and
+`ANTHROPIC_AUTH_TOKEN` (default `freecc`) is the local proxy's bearer token. A
+per‑provider `*_PROXY` env var lets a provider egress through its own HTTP/SOCKS
+proxy. **Fastest local start:** run Ollama, then set
+`MODEL="ollama/<model>"` — no key required.
+
+## Messaging bots (optional)
+
+FCC can drive an agent from Telegram or Discord. Set `MESSAGING_PLATFORM` to
+`telegram`, `discord`, or `none`, then:
+
+- **Telegram:** `TELEGRAM_BOT_TOKEN`, `ALLOWED_TELEGRAM_USER_ID` (allow‑list),
+  optional `TELEGRAM_PROXY_URL`.
+- **Discord:** `DISCORD_BOT_TOKEN`, `ALLOWED_DISCORD_CHANNELS`.
+
+## Voice transcription (optional)
+
+Voice notes are transcribed when `VOICE_NOTE_ENABLED=true`. Pick a backend with
+`WHISPER_DEVICE`:
+
+- `cpu` / `cuda` — offline Hugging Face Whisper. Install the extra:
+  `uv tool install ... 'free-claude-code[voice_local]'` (pulls Torch; needs
+  `download.pytorch.org`, **blocked in the sandbox**).
+- `nvidia_nim` — NVIDIA NIM Whisper over Riva gRPC; needs `NVIDIA_NIM_API_KEY`
+  and the `[voice]` extra. gRPC is **not supported through the sandbox proxy**.
+
+Both voice backends therefore only work outside the restricted sandbox.
 
 ## Egress caveats in this sandbox
 
