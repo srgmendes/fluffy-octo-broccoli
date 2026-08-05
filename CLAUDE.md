@@ -15,6 +15,7 @@ as its own mini-project:
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
+| **Free Claude Code** | `free-claude-code/` | Install notes (docs only) for [Free Claude Code](https://github.com/Alishahryar1/free-claude-code), a local proxy gateway that routes coding agents through your own AI providers. Documents the sandbox/proxy-constrained install procedure. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -23,6 +24,8 @@ changes rarely cross these boundaries.
 
 ```
 .
+├── free-claude-code/        # Free Claude Code install notes (docs only)
+│   └── README.md            # Sandbox/proxy-constrained install procedure
 ├── COMPOSIO.md              # Composio setup & usage docs
 ├── composio-example.mjs     # Lists Composio toolkits (smoke test for SDK + key)
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth
