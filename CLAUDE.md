@@ -14,6 +14,7 @@ as its own mini-project:
 | --- | --- | --- |
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
+| **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -31,14 +32,24 @@ changes rarely cross these boundaries.
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
 ├── .agents/skills/          # Vendored skill sources (find-skills, research)
 ├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
-└── stirling-pdf/            # Self-contained Docker Compose deployment
-    ├── docker-compose.yml   # Stirling-PDF (pinned 2.14.2) + Caddy proxy
-    ├── Caddyfile            # Proxy config: HTTPS, basic auth, headers, rate limit
-    ├── Caddy.Dockerfile     # Builds Caddy with the caddy-ratelimit module
-    ├── .env.example         # Admin creds, domain, rate-limit knobs
-    ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
-    ├── README.md            # Full operator documentation
-    └── data/                # Runtime state (git-ignored except structure)
+├── stirling-pdf/            # Self-contained Docker Compose deployment
+│   ├── docker-compose.yml   # Stirling-PDF (pinned 2.14.2) + Caddy proxy
+│   ├── Caddyfile            # Proxy config: HTTPS, basic auth, headers, rate limit
+│   ├── Caddy.Dockerfile     # Builds Caddy with the caddy-ratelimit module
+│   ├── .env.example         # Admin creds, domain, rate-limit knobs
+│   ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
+│   ├── README.md            # Full operator documentation
+│   └── data/                # Runtime state (git-ignored except structure)
+└── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
+    ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
+    ├── uv.lock              # Pinned Python dependency lockfile
+    ├── main.py              # Trivial entrypoint stub (real app is backend.main)
+    ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
+    ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
+    ├── README.md            # Upstream project docs (setup & running)
+    ├── CLAUDE.md            # Upstream architecture / implementation notes
+    ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
+    └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
 ```
 
 ## Composio integration (repo root)
@@ -133,6 +144,51 @@ After editing just the `Caddyfile`, `docker compose restart caddy` is enough.
 - The Stirling-PDF image is **pinned by tag** for reproducibility. To upgrade,
   bump the tag in `docker-compose.yml` and update the version references in
   `README.md` to match.
+
+## LLM Council app (`llm-council/`)
+
+A **vendored** copy of [`karpathy/llm-council`](https://github.com/karpathy/llm-council)
+— a self-contained local web app, unrelated to the other areas. It sends one
+query to a configurable "council" of LLMs through **OpenRouter**, has each model
+anonymously review and rank the others' answers, then a chairman model
+synthesizes a final response. Two processes: a **FastAPI** backend and a
+**React + Vite** frontend. `llm-council/README.md` is the upstream setup guide
+and `llm-council/CLAUDE.md` holds the upstream architecture notes — read those
+before changing anything inside.
+
+- **Vendored, not a submodule.** The code was copied in with its own git history
+  stripped; there is no `skills-lock.json`-style pin. To update, re-pull from
+  upstream and review the diff. Upstream is explicitly unmaintained ("provided as
+  is"), so treat this snapshot as the source of truth.
+- **Dependencies are pinned.** Python via `uv.lock` (managed with
+  [uv](https://docs.astral.sh/uv/)); frontend via `frontend/package-lock.json`
+  (npm). Backend needs Python ≥ 3.10 (`.python-version` pins 3.10).
+- **Ports:** backend on **8001**, frontend dev server on **5173** (Vite). CORS in
+  `backend/main.py` allows `localhost:5173` / `localhost:3000`.
+- **Model config** lives in `backend/config.py` (`COUNCIL_MODELS`,
+  `CHAIRMAN_MODEL`) — edit there to change the council.
+
+### Setup & running
+
+```bash
+cd llm-council
+uv sync                            # install Python backend deps
+cp .env.example .env               # then paste a real OPENROUTER_API_KEY
+(cd frontend && npm install)       # install frontend deps
+./start.sh                         # runs backend (:8001) + frontend (:5173)
+# then open http://localhost:5173
+```
+
+### Configuration conventions
+
+- **Secrets never get committed.** `.env` (holding `OPENROUTER_API_KEY`) is
+  git-ignored by `llm-council/.gitignore`; only `.env.example` is tracked —
+  mirroring the repo-wide `*.example` pattern. Get a key at
+  [openrouter.ai](https://openrouter.ai/).
+- `data/` (JSON conversation storage under `data/conversations/`) is runtime
+  state and is git-ignored — don't commit it.
+- Sandbox caveat: OpenRouter calls (`openrouter.ai`) must be allowed by the
+  sandbox egress policy, and the frontend/backend dev servers bind to localhost.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
