@@ -15,6 +15,7 @@ as its own mini-project:
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
+| **career-ops** | `career-ops/` | Vendored AI job-search pipeline (`santifer/career-ops`) — a Node.js CLI + agent skill that evaluates job offers, tailors CVs, scans ATS portals, and tracks applications, driven from any agent-skill CLI (Claude Code, Codex, OpenCode, …). |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -50,6 +51,16 @@ changes rarely cross these boundaries.
     ├── CLAUDE.md            # Upstream architecture / implementation notes
     ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
     └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+└── career-ops/             # Vendored AI job-search pipeline (santifer/career-ops)
+    ├── package.json         # Node CLI (ESM); scan/pipeline/pdf/tracker scripts, no deps pinned lockfile
+    ├── .agents/skills/career-ops/SKILL.md  # Shared agent-skill entrypoint (the /career-ops router)
+    ├── .claude/, .cursor/, .qwen/, …        # Per-CLI references into the shared skill
+    ├── .claude-plugin/      # plugin.json + marketplace.json (installable as a Claude Code plugin)
+    ├── modes/               # Mode logic (scan, pipeline, pdf, tracker, …) the skill dispatches to
+    ├── config/, templates/  # *.example config (profile, portals); real config is git-ignored
+    ├── .env.example         # Template for GEMINI_API_KEY / OPENROUTER_API_KEY (career-ops scope)
+    ├── AGENTS.md            # Upstream agent guidance (CLAUDE.md is `@AGENTS.md`)
+    └── README.md            # Upstream setup & usage guide
 ```
 
 ## Composio integration (repo root)
@@ -189,6 +200,40 @@ cp .env.example .env               # then paste a real OPENROUTER_API_KEY
   state and is git-ignored — don't commit it.
 - Sandbox caveat: OpenRouter calls (`openrouter.ai`) must be allowed by the
   sandbox egress policy, and the frontend/backend dev servers bind to localhost.
+
+## career-ops (`career-ops/`)
+
+A **vendored** copy of [`santifer/career-ops`](https://github.com/santifer/career-ops)
+— an AI-powered job-search pipeline that runs inside any agent-skill CLI (Claude
+Code, Codex, OpenCode, Antigravity, Qwen, Kimi, Grok, Copilot). It evaluates job
+offers against your profile, tailors CVs, scans ATS/company portals for openings,
+generates PDFs and cover letters, and tracks applications. `career-ops/README.md`
+is the upstream setup guide and `career-ops/AGENTS.md` holds the upstream agent
+instructions (its `CLAUDE.md` is just `@AGENTS.md`) — read those before changing
+anything inside.
+
+- **Vendored, not a submodule.** Exported from upstream `HEAD` (commit
+  `7590b74`) with its git history stripped, mirroring how `llm-council/` was
+  brought in. There is no `skills-lock.json` entry — it is a whole app, not a
+  single pinned skill. To update, re-export from upstream and review the diff.
+- **How it runs.** The system is a shared agent skill: the entrypoint is
+  `career-ops/.agents/skills/career-ops/SKILL.md`, referenced per-CLI from
+  `.claude/`, `.cursor/`, `.qwen/`, `.antigravitycli/`, `.grok/`, etc. In Claude
+  Code it surfaces as the `/career-ops` command (with `scan` / `pipeline` / `pdf`
+  / `tracker` subcommands); the Node scripts in `career-ops/package.json`
+  (`npm run scan`, `doctor`, `pdf`, …) back those modes.
+- **Self-contained, own scope.** Treat `career-ops/` as its own project: run
+  `npm install` (and `npx playwright install chromium` for PDF generation) from
+  inside that directory, not the repo root. It has its own `package.json`,
+  `.gitignore`, and CLI-integration folders that are independent of the repo-root
+  Composio project and the root `.claude/` skills.
+- **Secrets & personal data never get committed.** career-ops ships its own
+  strict `.gitignore` (kept intact) covering `.env`, `config/profile.yml`,
+  `portals.yml`, `cv.md`, offers, interview prep, and other PII — only `*.example`
+  templates and `.gitkeep` scaffolds are tracked, matching the repo-wide
+  secrets-discipline pattern. Configure by copying the `.example` files
+  (`.env.example`, `config/profile.example.yml`, `templates/portals.example.yml`)
+  and adding your own `cv.md`.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
