@@ -16,6 +16,7 @@ as its own mini-project:
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
+| **Free Claude Code** | `free-claude-code/` | Install notes (docs only) for [Free Claude Code](https://github.com/Alishahryar1/free-claude-code), a local proxy gateway that routes coding agents through your own AI providers. Documents the sandbox/proxy-constrained install procedure. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -24,6 +25,10 @@ changes rarely cross these boundaries.
 
 ```
 .
+├── free-claude-code/        # Free Claude Code install notes (docs only)
+│   ├── README.md            # Sandbox/proxy-constrained install procedure
+│   └── install-sandbox.sh   # Automates the sanctioned-path install
+
 ├── COMPOSIO.md              # Composio setup & usage docs
 ├── composio-example.mjs     # Lists Composio toolkits (smoke test for SDK + key)
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth
