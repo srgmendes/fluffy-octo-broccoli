@@ -15,6 +15,7 @@ as its own mini-project:
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
+| **camofox-browser MCP** | `camofox-browser/`, root `.mcp.json` | Docker Compose deployment of `jo-inc/camofox-browser` (anti-detection browser server) plus the MCP registration that exposes its 11 browser tools to Claude Code. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -29,6 +30,7 @@ changes rarely cross these boundaries.
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth
 ├── package.json             # ESM Node project; depends on @composio/core
 ├── .env.example             # Template for COMPOSIO_API_KEY (root scope)
+├── .mcp.json                # Registers the camofox-browser MCP server for Claude Code
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
 ├── .agents/skills/          # Vendored skill sources (find-skills, research)
 ├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
@@ -40,16 +42,20 @@ changes rarely cross these boundaries.
 │   ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
 │   ├── README.md            # Full operator documentation
 │   └── data/                # Runtime state (git-ignored except structure)
-└── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
-    ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
-    ├── uv.lock              # Pinned Python dependency lockfile
-    ├── main.py              # Trivial entrypoint stub (real app is backend.main)
-    ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
-    ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
-    ├── README.md            # Upstream project docs (setup & running)
-    ├── CLAUDE.md            # Upstream architecture / implementation notes
-    ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
-    └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+├── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
+│   ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
+│   ├── uv.lock              # Pinned Python dependency lockfile
+│   ├── main.py              # Trivial entrypoint stub (real app is backend.main)
+│   ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
+│   ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
+│   ├── README.md            # Upstream project docs (setup & running)
+│   ├── CLAUDE.md            # Upstream architecture / implementation notes
+│   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
+│   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+└── camofox-browser/         # Docker Compose deploy of jo-inc/camofox-browser + MCP wiring
+    ├── docker-compose.yml   # REST server built from pinned upstream commit (port 9377)
+    ├── .env.example         # Optional heap cap + auth keys (CAMOFOX_ACCESS_KEY / _API_KEY)
+    └── README.md            # Operator guide + Claude Code / Desktop MCP registration
 ```
 
 ## Composio integration (repo root)
@@ -189,6 +195,37 @@ cp .env.example .env               # then paste a real OPENROUTER_API_KEY
   state and is git-ignored — don't commit it.
 - Sandbox caveat: OpenRouter calls (`openrouter.ai`) must be allowed by the
   sandbox egress policy, and the frontend/backend dev servers bind to localhost.
+
+## camofox-browser MCP (`camofox-browser/`, root `.mcp.json`)
+
+A **self-contained integration** that exposes
+[`jo-inc/camofox-browser`](https://github.com/jo-inc/camofox-browser) — an
+anti-detection browser server (Camoufox/Firefox with C++-level fingerprint
+spoofing) — to Claude as MCP tools. No upstream code is vendored;
+`camofox-browser/README.md` is the authoritative operator guide — read it before
+changing anything here. Key facts:
+
+- **Two moving parts.** A **REST server** (the browser engine, port `9377`) that
+  you run once, and an **MCP adapter** (`@askjo/camofox-browser-mcp`) that Claude
+  Code spawns per session and which forwards MCP tool calls to that REST server.
+  The adapter is inert without a reachable REST server.
+- **The REST server is Docker Compose.** `camofox-browser/docker-compose.yml`
+  builds the image straight from the **pinned upstream commit** (bakes in the
+  ~300MB Camoufox binary), so the first start needs
+  `docker compose up -d --build`. It publishes `127.0.0.1:9377` so the
+  host-spawned adapter can reach it.
+- **The MCP registration is the root `.mcp.json`.** It runs the adapter via
+  `npx -y @askjo/camofox-browser-mcp@<pinned>` with
+  `CAMOFOX_BASE_URL=http://localhost:9377`. Claude Code auto-discovers it
+  (project scope → one-time approval prompt); `/mcp` should list 11
+  `camofox_*` tools once the REST server is up.
+- **Pinning.** Upstream is pinned twice — the build `context` commit SHA in
+  `docker-compose.yml` and the adapter version in `.mcp.json`. Bump both
+  together when upgrading, and update `README.md` to match.
+- **Secrets discipline.** Optional auth keys (`CAMOFOX_ACCESS_KEY`,
+  `CAMOFOX_API_KEY`) live in a git-ignored `.env` (template: `.env.example`). If
+  set on the server they must be mirrored into `.mcp.json`'s `env`, or the
+  adapter's calls get rejected.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 

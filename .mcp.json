@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "camofox-browser": {
+      "command": "npx",
+      "args": ["-y", "@askjo/camofox-browser-mcp@1.13.1"],
+      "env": {
+        "CAMOFOX_BASE_URL": "http://localhost:9377"
+      }
+    }
+  }
+}

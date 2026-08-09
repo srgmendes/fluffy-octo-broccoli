@@ -1,0 +1,40 @@
+services:
+  # Anti-detection browser REST server (Camoufox/Firefox under the hood).
+  #
+  # Built straight from the upstream repo, pinned to a specific commit for
+  # reproducible builds — upgrade by bumping the `#<sha>` fragment (and the
+  # version references in README.md to match). The upstream Dockerfile bakes the
+  # ~300MB Camoufox binary into the image at build time, so the first
+  # `docker compose up -d --build` is slow; subsequent starts are fast.
+  #
+  # The MCP adapter that Claude Code spawns is a thin stdio client over this
+  # HTTP API, so the port MUST be published on the host (localhost:9377) for the
+  # adapter to reach it. See ../.mcp.json and this directory's README.md.
+  camofox-browser:
+    build:
+      context: "https://github.com/jo-inc/camofox-browser.git#af3a2505fc3853e976ad261b2ca0cfc445054d33"
+    image: camofox-browser:local
+    container_name: camofox-browser
+    restart: unless-stopped
+    ports:
+      # host:container — the MCP adapter talks to http://localhost:9377
+      - "127.0.0.1:9377:9377"
+    environment:
+      CAMOFOX_PORT: "9377"
+      # Cap Node's old-space heap; the server is designed to idle at ~40MB.
+      MAX_OLD_SPACE_SIZE: "${MAX_OLD_SPACE_SIZE:-128}"
+      # --- Optional auth (leave unset for a private, localhost-only setup) ---
+      # Global bearer token gating EVERY REST call (superkey). If set here, set
+      # the same value as CAMOFOX_ACCESS_KEY in ../.mcp.json's env so the adapter
+      # forwards it. See .env.example.
+      CAMOFOX_ACCESS_KEY: "${CAMOFOX_ACCESS_KEY:-}"
+      # Self-chosen secret gating cookie import only. Optional on localhost.
+      CAMOFOX_API_KEY: "${CAMOFOX_API_KEY:-}"
+    # Firefox is happier with more shared memory than Docker's 64MB default.
+    shm_size: "512m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9377/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
