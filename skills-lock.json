@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/research/SKILL.md",
       "computedHash": "bd3e2c6826671d82c86ed0da3dac3370ebcf63b0fe847f91bb444e1fb7dac21b"
+    },
+    "prompt-optimizer": {
+      "source": "geq1fan/prompt-optimizer-skill",
+      "sourceType": "github",
+      "skillPath": "skills/SKILL.md",
+      "computedHash": "a1f3b7c87163df45590f2515e7af4e6342e74f3dcbe24a94bc40b3d28ddcc8ec"
     }
   }
 }
