@@ -15,7 +15,7 @@ as its own mini-project:
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
-| **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
+| **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, and the `emilkowalski/skills` design/animation set) pinned by hash. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -30,7 +30,7 @@ changes rarely cross these boundaries.
 ├── package.json             # ESM Node project; depends on @composio/core
 ├── .env.example             # Template for COMPOSIO_API_KEY (root scope)
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
-├── .agents/skills/          # Vendored skill sources (find-skills, research)
+├── .agents/skills/          # Vendored skill sources (find-skills, research, emilkowalski/skills set)
 ├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
 ├── stirling-pdf/            # Self-contained Docker Compose deployment
 │   ├── docker-compose.yml   # Stirling-PDF (pinned 2.14.2) + Caddy proxy
@@ -201,11 +201,14 @@ runtime:
 - `.claude/skills/<name>` are **symlinks** into `.agents/skills/` so Claude Code
   discovers them.
 
-Currently present: `find-skills` (from `vercel-labs/skills`) and `research`
-(from `mattpocock/skills`), both vendored from GitHub and tracked in
-`skills-lock.json`; plus `chief-content-officer`, a **local** skill added
-directly to the repo (not from a GitHub source, so it has no `skills-lock.json`
-entry).
+Currently present: `find-skills` (from `vercel-labs/skills`), `research` (from
+`mattpocock/skills`), and ten design/animation skills from
+`emilkowalski/skills` (`animate`, `animation-vocabulary`, `apple-design`,
+`ask-sonner`, `emil-design-eng`, `find-animation-opportunities`,
+`improve-animations`, `pick-ui-library`, `prototype`, `review-animations`) —
+all vendored from GitHub and tracked in `skills-lock.json`; plus
+`chief-content-officer`, a **local** skill added directly to the repo (not
+from a GitHub source, so it has no `skills-lock.json` entry).
 
 When adding or updating a GitHub-vendored skill, update `skills-lock.json`
 (including the hash) alongside the files. When adding a local skill, just place
