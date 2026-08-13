@@ -1,0 +1,79 @@
+services:
+  vane:
+    # Pinned to a specific release for reproducible deployments. The "full"
+    # tag bundles SearxNG, so no separate search service is required here.
+    # Check https://hub.docker.com/r/itzcrazykns1337/vane/tags for newer tags.
+    image: itzcrazykns1337/vane:v1.12.2
+    container_name: vane
+    restart: unless-stopped
+    # Not published to the host — traffic reaches Vane only through the Caddy
+    # reverse proxy below. To also expose it directly (e.g. for debugging),
+    # add:  ports: ["3000:3000"]
+    expose:
+      - "3000"
+    volumes:
+      # Persisted app data (bundled SearxNG state, search/chat history,
+      # uploaded files, provider config set via the in-app setup screen).
+      - ./data:/home/vane/data
+    extra_hosts:
+      # Lets the container reach a local Ollama/Lemonade server on the Docker
+      # host via http://host.docker.internal:<port> — see README.
+      - "host.docker.internal:host-gateway"
+    networks:
+      - vane-network
+
+  # Reverse proxy terminating HTTPS in front of Vane.
+  # - VANE_DOMAIN=localhost (default): Caddy serves HTTPS with its own
+  #   internal CA — trusted on the host once you run the caddy-trust helper
+  #   (see README), otherwise the browser shows a one-time warning.
+  # - VANE_DOMAIN=your.public.domain: Caddy automatically obtains and renews
+  #   a Let's Encrypt certificate (ports 80 and 443 must be reachable).
+  #
+  # Vane has no built-in authentication yet (it's an upcoming upstream
+  # feature), so the basic_auth block in the Caddyfile is the only thing
+  # gating access to this instance — don't skip proxy-auth.env.
+  caddy:
+    # Built from Caddy.Dockerfile to include the caddy-ratelimit module, which
+    # isn't part of stock Caddy. Run `docker compose up -d --build` after
+    # changing the Dockerfile. The image: line just names the built image.
+    build:
+      context: .
+      dockerfile: Caddy.Dockerfile
+    image: vane-caddy:local
+    container_name: vane-caddy
+    restart: unless-stopped
+    depends_on:
+      - vane
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      VANE_DOMAIN: "${VANE_DOMAIN:-localhost}"
+      # Per-IP rate limit: max requests (events) per time window. Tune for
+      # your usage — too low can throttle heavy pages; too high weakens
+      # protection.
+      RATE_LIMIT_EVENTS: "${RATE_LIMIT_EVENTS:-200}"
+      RATE_LIMIT_WINDOW: "${RATE_LIMIT_WINDOW:-1m}"
+    # HTTP Basic Auth credentials for the proxy. Loaded from proxy-auth.env
+    # (see proxy-auth.env.example) — passed literally, so the bcrypt hash's
+    # `$` characters need no escaping. required: false lets the stack start
+    # with the built-in default (admin / changeme) until you create the file.
+    env_file:
+      - path: ./proxy-auth.env
+        required: false
+    volumes:
+      # Reverse-proxy configuration
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Persist issued certificates and ACME account data across restarts
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - vane-network
+
+networks:
+  vane-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
