@@ -15,6 +15,7 @@ as its own mini-project:
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
+| **AgenticSeek deployment** | `agenticseek/` | Vendored local-first autonomous agent (FastAPI backend + React frontend + SearxNG/Redis via Docker Compose) that browses the web, writes/runs code, and plans tasks using local or API-backed LLMs. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -40,16 +41,29 @@ changes rarely cross these boundaries.
 │   ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
 │   ├── README.md            # Full operator documentation
 │   └── data/                # Runtime state (git-ignored except structure)
-└── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
-    ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
-    ├── uv.lock              # Pinned Python dependency lockfile
-    ├── main.py              # Trivial entrypoint stub (real app is backend.main)
-    ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
-    ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
-    ├── README.md            # Upstream project docs (setup & running)
-    ├── CLAUDE.md            # Upstream architecture / implementation notes
-    ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
-    └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+├── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
+│   ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
+│   ├── uv.lock              # Pinned Python dependency lockfile
+│   ├── main.py              # Trivial entrypoint stub (real app is backend.main)
+│   ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
+│   ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
+│   ├── README.md            # Upstream project docs (setup & running)
+│   ├── CLAUDE.md            # Upstream architecture / implementation notes
+│   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
+│   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+└── agenticseek/             # Vendored FastAPI + React local agent (Fosowl/agenticSeek)
+    ├── docker-compose.yml   # redis + searxng + frontend (+ backend, "backend"/"full" profiles)
+    ├── Dockerfile.backend   # Backend image (Python, browser automation deps)
+    ├── .env.example         # Ports, WORK_DIR, BACKEND_HOST, optional provider API keys
+    ├── config.ini           # LLM provider/model selection (local or API-backed)
+    ├── pyproject.toml / uv.lock / requirements.txt   # Python deps
+    ├── api.py / cli.py      # FastAPI server entrypoint / interactive CLI entrypoint
+    ├── sources/             # Backend: agents, browser automation, LLM providers, tools
+    ├── frontend/             # React UI (agentic-seek-front/), own Dockerfile.frontend
+    ├── searxng/              # Bundled SearxNG config for the local web-search backend
+    ├── llm_router/, llm_server/  # Local routing model + optional standalone LLM server
+    ├── scripts/, install.sh, install.bat  # Host (non-Docker) install helpers
+    └── README.md            # Upstream project docs (setup & running)
 ```
 
 ## Composio integration (repo root)
@@ -190,6 +204,69 @@ cp .env.example .env               # then paste a real OPENROUTER_API_KEY
 - Sandbox caveat: OpenRouter calls (`openrouter.ai`) must be allowed by the
   sandbox egress policy, and the frontend/backend dev servers bind to localhost.
 
+## AgenticSeek deployment (`agenticseek/`)
+
+A **vendored** copy of [`Fosowl/agenticSeek`](https://github.com/Fosowl/agenticSeek)
+— a self-hosted, local-first autonomous agent ("private Manus alternative")
+that browses the web, writes/runs code, and plans multi-step tasks, backed by
+either a locally-hosted LLM (Ollama, LM Studio) or an API provider (OpenAI,
+Anthropic, DeepSeek, etc.). Two processes plus two bundled services: a
+**FastAPI** backend, a **React** frontend, **SearxNG** (self-hosted web search)
+and **Redis**, wired together via `docker-compose.yml`.
+`agenticseek/README.md` is the upstream setup guide — read it before changing
+anything inside.
+
+- **Vendored, not a submodule.** Copied in with its own git history stripped,
+  same as `llm-council/`; no `skills-lock.json`-style pin. To update, re-pull
+  from upstream and review the diff.
+- **⚠️ Unauthenticated backend with host code execution.** The backend's
+  `/query` endpoint has no auth, and the agent it drives runs shell commands
+  and file operations on the host inside `WORK_DIR`. `docker-compose.yml`
+  publishes it on `127.0.0.1` only by design — do **not** change that binding
+  (or `BACKEND_HOST` in `.env`) to `0.0.0.0`/a LAN-visible address without
+  putting it behind auth and a firewall first. Treat this the same way
+  Stirling-PDF's Caddy layer is treated: the network boundary *is* the
+  security model.
+- **Dependencies are pinned.** Python via `uv.lock` / `requirements.txt`
+  (Python 3.10, per `.python-version`); frontend via
+  `frontend/agentic-seek-front` (npm). `docker-compose.yml` pulls
+  `searxng/searxng:latest` and `valkey/valkey:8-alpine` unpinned — that's
+  upstream's choice, not overridden here.
+- **Ports:** SearxNG on `SEARXNG_PORT` (default `8080`), frontend on `3000`,
+  backend on `127.0.0.1:BACKEND_PORT` (default `7777`, Docker profiles
+  `backend`/`full` only — the `core` profile omits it for CLI-mode use).
+- **Provider config** lives in `agenticseek/config.ini` (provider name/model)
+  and `agenticseek/.env` (ports, `WORK_DIR`, optional API keys) — both are
+  read only at process start; restart after editing.
+
+### Setup & running
+
+```bash
+cd agenticseek
+cp .env.example .env               # set WORK_DIR; API keys optional if using a local LLM
+# edit config.ini to pick a provider/model
+docker compose --profile full up -d --build   # backend + frontend + searxng + redis
+# or: docker compose --profile core up -d      # searxng + redis + frontend only (CLI mode backend)
+# CLI mode instead of the web UI:
+uv run cli.py
+```
+
+### Configuration conventions
+
+- **Secrets never get committed.** `.env` is git-ignored by
+  `agenticseek/.gitignore`; only `.env.example` is tracked. API keys
+  (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.) are optional — the project's
+  primary use case is a fully local LLM via Ollama/LM Studio.
+- `WORK_DIR` is the **only** directory the agent may read/write/execute in —
+  point it at a scratch workspace, never at this repository or another
+  sensitive path.
+- Runtime data (`.agent-data/`, screenshots, conversation logs, chrome
+  profiles) is git-ignored by the vendored `agenticseek/.gitignore` — don't
+  commit it.
+- Upstream tracks `llm_router/model.safetensors` (a small routing model)
+  despite their own `.gitignore` excluding `*.safetensors` elsewhere; it's
+  kept here too since the router depends on it.
+
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
 Third-party Claude skills are **vendored** into this repo, not fetched at
@@ -230,8 +307,9 @@ When adding or updating a GitHub-vendored skill, update `skills-lock.json`
   versions) for reproducibility rather than tracking `latest`.
 - There is **no test suite or linter** configured. `npm test` is a placeholder
   that exits non-zero. Verify Composio changes by running the scripts against a
-  real key; verify Stirling-PDF changes with `docker compose config` (validates
-  the compose file) and a local `docker compose up`.
+  real key; verify Stirling-PDF or AgenticSeek Docker Compose changes with
+  `docker compose config` (validates the compose file) and a local
+  `docker compose up`.
 
 ## Git & contribution workflow
 
