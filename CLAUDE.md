@@ -16,6 +16,7 @@ as its own mini-project:
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
+| **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -40,16 +41,20 @@ changes rarely cross these boundaries.
 │   ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
 │   ├── README.md            # Full operator documentation
 │   └── data/                # Runtime state (git-ignored except structure)
-└── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
-    ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
-    ├── uv.lock              # Pinned Python dependency lockfile
-    ├── main.py              # Trivial entrypoint stub (real app is backend.main)
-    ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
-    ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
-    ├── README.md            # Upstream project docs (setup & running)
-    ├── CLAUDE.md            # Upstream architecture / implementation notes
-    ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
-    └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+├── llm-council/             # Vendored FastAPI + React OpenRouter app (karpathy/llm-council)
+│   ├── pyproject.toml       # Python deps (FastAPI, httpx, pydantic); pinned in uv.lock
+│   ├── uv.lock              # Pinned Python dependency lockfile
+│   ├── main.py              # Trivial entrypoint stub (real app is backend.main)
+│   ├── start.sh             # Launches backend (:8001) + frontend dev server (:5173)
+│   ├── .env.example         # Template for OPENROUTER_API_KEY (llm-council scope)
+│   ├── README.md            # Upstream project docs (setup & running)
+│   ├── CLAUDE.md            # Upstream architecture / implementation notes
+│   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
+│   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+    ├── README.md            # Install, update, and usage instructions
+    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+    └── downloads/           # Git-ignored scratch spot for local downloads
 ```
 
 ## Composio integration (repo root)
@@ -189,6 +194,27 @@ cp .env.example .env               # then paste a real OPENROUTER_API_KEY
   state and is git-ignored — don't commit it.
 - Sandbox caveat: OpenRouter calls (`openrouter.ai`) must be allowed by the
   sandbox egress policy, and the frontend/backend dev servers bind to localhost.
+
+## yt-dlp CLI (`yt-dlp/`)
+
+Setup docs for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) CLI — a
+command-line media downloader. Unlike the other areas, this isn't application
+code or a hosted service; it's just an `install.sh` wrapper and a README
+documenting how to install, update, and use the `yt-dlp` command locally.
+`yt-dlp/README.md` is the source of truth for usage.
+
+```bash
+cd yt-dlp
+./install.sh          # pipx install yt-dlp (falls back to pip3 install --user)
+```
+
+- Installs via `pipx` (falls back to `pip3 install --user`); requires Python
+  3.9+ and, optionally, `ffmpeg` for merging streams / extracting audio.
+- `downloads/` is a git-ignored scratch spot for local output (same
+  `.gitkeep`-plus-`.gitignore` pattern as `stirling-pdf/data/`).
+- Sandbox caveat: downloading needs network egress to whatever site is being
+  pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
+  the sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
