@@ -14,6 +14,7 @@ as its own mini-project:
 | --- | --- | --- |
 | **Composio integration** | repo root (`composio-*.mjs`, `COMPOSIO.md`) | Node.js (ESM) scripts that use the Composio SDK to connect third-party apps (Outlook, etc.) via OAuth and list toolkits. |
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
+| **Vane deployment** | `vane/` | Docker Compose stack running self-hosted Vane (AI answering engine, bundled SearxNG) behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 
@@ -37,6 +38,14 @@ changes rarely cross these boundaries.
 │   ├── Caddyfile            # Proxy config: HTTPS, basic auth, headers, rate limit
 │   ├── Caddy.Dockerfile     # Builds Caddy with the caddy-ratelimit module
 │   ├── .env.example         # Admin creds, domain, rate-limit knobs
+│   ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
+│   ├── README.md            # Full operator documentation
+│   └── data/                # Runtime state (git-ignored except structure)
+├── vane/                    # Self-contained Docker Compose deployment
+│   ├── docker-compose.yml   # Vane (pinned v1.12.2, bundled SearxNG) + Caddy proxy
+│   ├── Caddyfile            # Proxy config: HTTPS, basic auth, headers, rate limit
+│   ├── Caddy.Dockerfile     # Builds Caddy with the caddy-ratelimit module
+│   ├── .env.example         # Domain, rate-limit knobs
 │   ├── proxy-auth.env.example  # Proxy basic-auth username + bcrypt hash
 │   ├── README.md            # Full operator documentation
 │   └── data/                # Runtime state (git-ignored except structure)
@@ -143,6 +152,57 @@ After editing just the `Caddyfile`, `docker compose restart caddy` is enough.
   all real contents — don't commit runtime data.
 - The Stirling-PDF image is **pinned by tag** for reproducibility. To upgrade,
   bump the tag in `docker-compose.yml` and update the version references in
+  `README.md` to match.
+
+## Vane deployment (`vane/`)
+
+Another fully self-contained Docker Compose stack, same shape as
+`stirling-pdf/`: no application code, only infrastructure config.
+`vane/README.md` is the authoritative operator guide; read it before changing
+anything here. [Vane](https://github.com/ItzCrazyKns/Vane) is a self-hosted AI
+answering engine (web search + local/cloud LLMs, cited sources). Key facts:
+
+- **Two services:** `vane` (official prebuilt image, pinned to `v1.12.2`,
+  bundles SearxNG) and `caddy` (reverse proxy). Vane is **not** published to
+  the host — it's only reachable through Caddy on the internal Docker network.
+- **Caddy is a custom build**, identical setup to `stirling-pdf/`:
+  `Caddy.Dockerfile` compiles the `caddy-ratelimit` module via `xcaddy`, so the
+  first start needs `docker compose up -d --build`.
+- **Auth is Caddy-only.** Vane has **no built-in login of its own** (planned
+  upstream but not shipped yet), so the Caddy proxy's HTTP Basic Auth
+  (bcrypt hash) is the *only* access gate — unlike Stirling-PDF, there's no
+  app-level login behind it. Don't treat this as optional hardening here.
+- **HTTPS everywhere:** Caddy terminates TLS — internal CA on `localhost`,
+  automatic Let's Encrypt for a public domain (via `VANE_DOMAIN`).
+- **No app env vars.** Unlike Stirling-PDF, Vane's own configuration (AI
+  provider keys, models, SearxNG URL) is set through its in-app setup screen,
+  not `docker-compose.yml` environment variables — the compose file only
+  configures the Caddy layer and the data volume.
+
+### Common operations
+
+```bash
+cd vane
+cp proxy-auth.env.example proxy-auth.env   # set real basic-auth credentials
+cp .env.example .env                       # set VANE_DOMAIN, rate-limit knobs
+docker compose up -d --build       # first start (builds custom Caddy image)
+docker compose up -d               # subsequent starts (no rebuild needed)
+docker compose logs -f             # follow logs
+docker compose pull && docker compose up -d   # update the Vane image
+docker compose down                # stop and remove
+```
+
+Rebuild the Caddy image (`--build`) only after changing `Caddy.Dockerfile`.
+After editing just the `Caddyfile`, `docker compose restart caddy` is enough.
+
+### Configuration conventions
+
+- Same conventions as `stirling-pdf/`: prefer environment variables over
+  hardcoding, never commit `.env` / `proxy-auth.env` (git-ignored; only
+  `.example` templates are tracked), and `data/` holds runtime state
+  (git-ignored except structure).
+- The Vane image is **pinned by tag** for reproducibility. To upgrade, bump
+  the tag in `docker-compose.yml` and update the version references in
   `README.md` to match.
 
 ## LLM Council app (`llm-council/`)
