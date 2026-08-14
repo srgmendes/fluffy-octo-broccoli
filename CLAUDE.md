@@ -17,6 +17,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **Obsidian app** | `obsidian/` | Setup docs + install script for the [Obsidian](https://obsidian.md) desktop note-taking app, pulling builds from [`obsidianmd/obsidian-releases`](https://github.com/obsidianmd/obsidian-releases). No application code — Obsidian is closed-source; that repo only hosts release binaries + community plugin/theme directories. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -51,10 +52,13 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── obsidian/                # Setup docs + install script for the Obsidian desktop app
+    ├── README.md            # Install, run, and update instructions
+    └── install.sh           # Downloads latest AppImage (Linux) / brew cask (macOS)
 ```
 
 ## Composio integration (repo root)
@@ -215,6 +219,28 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## Obsidian app (`obsidian/`)
+
+Setup docs for the [Obsidian](https://obsidian.md) desktop note-taking app.
+Like `yt-dlp/`, this isn't application code — Obsidian is closed-source, so
+there's nothing to vendor or build. `install.sh` pulls the platform build from
+Obsidian's release repo, [`obsidianmd/obsidian-releases`](https://github.com/obsidianmd/obsidian-releases)
+(which hosts release binaries plus the community plugin/theme directories,
+not Obsidian's source). `obsidian/README.md` is the source of truth for
+install/run/update details.
+
+```bash
+cd obsidian
+./install.sh          # Linux: latest AppImage -> ~/.local/bin; macOS: brew cask
+```
+
+- Linux downloads the latest `x86_64`/`aarch64` AppImage via the GitHub
+  releases API; macOS uses `brew install --cask obsidian`. Windows isn't
+  automated — the README links the manual installer.
+- Sandbox caveat: needs network egress to `github.com`, `api.github.com`, and
+  `objects.githubusercontent.com` (release asset CDN). Running the AppImage
+  without FUSE (common in containers) needs `--appimage-extract-and-run`.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
