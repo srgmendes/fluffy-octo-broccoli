@@ -17,6 +17,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **vLLM CLI** | `vllm/` | Setup docs + install script for [vLLM](https://github.com/vllm-project/vllm.git), a high-throughput LLM inference/serving engine. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -51,10 +52,13 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── vllm/                    # Setup docs + install script for the vLLM CLI
+    ├── README.md            # GPU/CPU install, serving, and usage instructions
+    └── install.sh           # pipx install vllm (falls back to pip3 install --user)
 ```
 
 ## Composio integration (repo root)
@@ -215,6 +219,37 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## vLLM CLI (`vllm/`)
+
+Setup docs for [vLLM](https://github.com/vllm-project/vllm.git) — a
+high-throughput inference and serving engine for large language models. Same
+pattern as `yt-dlp/`: no application code, just an `install.sh` wrapper and a
+README covering both the GPU and CPU-only install paths.
+`vllm/README.md` is the source of truth for usage.
+
+```bash
+cd vllm
+./install.sh          # pipx install vllm (falls back to pip3 install --user); GPU build
+```
+
+- Installs via `pipx` (falls back to `pip3 install --user`); requires Linux
+  and Python 3.9–3.12. The default build targets an NVIDIA GPU with CUDA
+  12.1+ and pulls in PyTorch as a dependency (multi-gigabyte download).
+- **No GPU (e.g. this sandbox)?** Skip `install.sh`. Plain `pip`/`pipx`
+  cannot produce a working CPU build — verified in a fresh venv: `pip
+  install vllm --extra-index-url .../whl/cpu` silently installs the
+  CUDA-target wheel anyway (pip prefers the default index) and every `vllm`
+  command then crashes with `RuntimeError: Failed to infer device type`.
+  Use the `uv pip install vllm --torch-backend cpu` command in
+  `vllm/README.md` instead.
+- Sandbox caveat: installing needs egress to PyPI, and to `download.pytorch.org`
+  for **both** the GPU build and a real CPU build — this domain is blocked by
+  the Claude Code cloud sandbox's default egress policy (confirmed via
+  `curl`), so neither install path fully works here without a policy change.
+  Serving needs egress to the Hugging Face Hub (`huggingface.co`) to
+  download model weights — allow those domains in the
+  sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
