@@ -17,6 +17,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`) pinned by hash. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **Refusal-direction analysis** | `refusal-analysis/` | Standalone Python script for interpretability research into how chat models represent refusal internally (activation probing + direction extraction). Analysis only — never edits model weights or produces a modified model. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -51,10 +52,16 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                   # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md             # Install, update, and usage instructions
+│   ├── install.sh            # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/            # Git-ignored scratch spot for local downloads
+└── refusal-analysis/         # Interpretability research: refusal-direction extraction
+    ├── README.md             # Method, setup, usage, sandbox caveats
+    ├── requirements.txt      # Pinned Python deps (torch, transformers, numpy, matplotlib)
+    ├── extract_refusal_directions.py  # PROBE / DISTILL / VERIFY steps only
+    ├── prompts/               # Paired harmful/harmless prompt sets
+    └── outputs/                # Git-ignored: generated direction vectors + plots
 ```
 
 ## Composio integration (repo root)
@@ -215,6 +222,39 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## Refusal-direction analysis (`refusal-analysis/`)
+
+A standalone Python script for interpretability research into how chat
+models represent "refusal" internally, following the analysis-only steps of
+refusal-direction research (e.g. Arditi et al., *"Refusal in Language Models
+Is Mediated by a Single Direction"*, 2024): probe activations on paired
+harmful/harmless prompts, distill a candidate direction per layer
+(diff-of-means and SVD), and verify per-layer separation with a plotted
+Cohen's d score. `refusal-analysis/README.md` documents the method in full.
+
+```bash
+cd refusal-analysis
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python extract_refusal_directions.py --model Qwen/Qwen2.5-0.5B-Instruct
+```
+
+- **Analysis only — no weight editing.** The script reads activations and
+  never modifies model weights, performs directional ablation, or saves a
+  modified model. Do not extend it into a weight-editing/"de-refusal"
+  pipeline in this repo.
+- `prompts/harmful.txt` / `prompts/harmless.txt` are paired line-by-line
+  (same topic, one refusal-eliciting phrasing and one benign phrasing per
+  line) — keep any edits paired.
+- `requirements.txt` pins `torch`/`transformers`/`numpy`/`matplotlib`,
+  matching the repo's pin-everything convention.
+- `outputs/` (generated `.npy` direction vectors and the analysis plot) is
+  git-ignored runtime output, same `.gitkeep`-plus-`.gitignore` pattern as
+  `stirling-pdf/data/`.
+- Sandbox caveat: downloading model weights needs network egress to the
+  model host (e.g. `huggingface.co`) and `pypi.org` for dependencies — allow
+  those domains in the sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
