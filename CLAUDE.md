@@ -236,11 +236,19 @@ cd vllm
 - Installs via `pipx` (falls back to `pip3 install --user`); requires Linux
   and Python 3.9–3.12. The default build targets an NVIDIA GPU with CUDA
   12.1+ and pulls in PyTorch as a dependency (multi-gigabyte download).
-- **No GPU (e.g. this sandbox)?** Skip `install.sh` and use the CPU-only pip
-  command documented in `vllm/README.md` instead.
-- Sandbox caveat: installing needs egress to PyPI (and `download.pytorch.org`
-  for the GPU build); serving needs egress to the Hugging Face Hub
-  (`huggingface.co`) to download model weights — allow those domains in the
+- **No GPU (e.g. this sandbox)?** Skip `install.sh`. Plain `pip`/`pipx`
+  cannot produce a working CPU build — verified in a fresh venv: `pip
+  install vllm --extra-index-url .../whl/cpu` silently installs the
+  CUDA-target wheel anyway (pip prefers the default index) and every `vllm`
+  command then crashes with `RuntimeError: Failed to infer device type`.
+  Use the `uv pip install vllm --torch-backend cpu` command in
+  `vllm/README.md` instead.
+- Sandbox caveat: installing needs egress to PyPI, and to `download.pytorch.org`
+  for **both** the GPU build and a real CPU build — this domain is blocked by
+  the Claude Code cloud sandbox's default egress policy (confirmed via
+  `curl`), so neither install path fully works here without a policy change.
+  Serving needs egress to the Hugging Face Hub (`huggingface.co`) to
+  download model weights — allow those domains in the
   sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)

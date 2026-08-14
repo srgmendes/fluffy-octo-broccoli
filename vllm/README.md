@@ -32,14 +32,32 @@ vllm --version
 
 ## Install (CPU-only)
 
-If there's no compatible NVIDIA GPU (e.g. this sandbox), install the CPU
-backend instead, following the upstream instructions:
-https://docs.vllm.ai/en/latest/getting_started/installation/cpu.html
+If there's no compatible NVIDIA GPU (e.g. this sandbox), you need vLLM's
+dedicated CPU build. **`pip install vllm --extra-index-url
+https://download.pytorch.org/whl/cpu` does not work** — verified against
+vLLM 0.27.1 in a fresh venv here. `pip` treats `--extra-index-url` as a
+fallback only, and PyPI's default index already has a CUDA-target `torch`
+wheel that satisfies vLLM's dependency constraint, so pip installs that one
+and never touches the CPU index. The result *installs* cleanly but is
+non-functional without a GPU: every `vllm` invocation crashes with
+`RuntimeError: Failed to infer device type` (vLLM's platform detection finds
+no CUDA device and, because the wheel was built for the CUDA target, no
+usable CPU platform either).
+
+The current working method uses [`uv`](https://docs.astral.sh/uv/), which
+supports selecting the backend explicitly:
 
 ```bash
-pip install --upgrade pip
-pip install vllm --extra-index-url https://download.pytorch.org/whl/cpu
+pip install --upgrade uv
+uv venv
+uv pip install vllm --torch-backend cpu
 ```
+
+This still needs `download.pytorch.org` (see the sandbox caveat below) — it
+could not be verified end-to-end in this sandbox because that domain is
+blocked here. If it's unreachable for you too, fall back to building from
+source with the CPU target, per the upstream guide:
+https://docs.vllm.ai/en/latest/getting_started/installation/cpu.html
 
 CPU inference is much slower than GPU and is best for small models or
 smoke-testing, not production serving.
@@ -67,7 +85,11 @@ Full flag reference: `vllm serve --help` or the
 
 Serving requires network egress to the Hugging Face Hub (`huggingface.co`,
 `cdn-lfs.huggingface.co`) to download model weights, and installation needs
-egress to PyPI (`pypi.org`, `files.pythonhosted.org`) and, for the GPU build,
-`download.pytorch.org`. This environment likely has no GPU — use the
-CPU-only install above, and make sure the sandbox's egress policy allows
-those domains before installing or serving.
+egress to PyPI (`pypi.org`, `files.pythonhosted.org`) and, for both the GPU
+build and the real CPU-only build, `download.pytorch.org`. As of this
+writing, the Claude Code cloud sandbox's default egress policy blocks
+`download.pytorch.org` (confirmed via `curl`: `CONNECT tunnel failed,
+response 403`) while allowing `pypi.org`. That means neither the GPU install
+nor a genuinely working CPU install can complete in this sandbox unless that
+domain is added to the egress policy — `pip install vllm` alone will
+succeed but produce the non-functional CUDA-target build described above.
