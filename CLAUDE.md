@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **watermarks-remover CLI** | `watermarks-remover/` | Setup docs + install script for [guillaumemeyer/watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover), a tool that strips AI provenance markers (Unicode/statistical text watermarks, C2PA/EXIF/XMP metadata) from files. No application code — installs by cloning the upstream repo locally. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,14 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── watermarks-remover/      # Setup docs + install script for watermarks-remover
     ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+    ├── install.sh           # git clone guillaumemeyer/watermarks-remover into checkout/
+    └── checkout/             # Git-ignored local clone of the upstream tool
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +222,37 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## watermarks-remover CLI (`watermarks-remover/`)
+
+Setup docs for [`guillaumemeyer/watermarks-remover`](https://github.com/guillaumemeyer/watermarks-remover)
+— a Python 3.10+, stdlib-first tool that strips AI provenance markers from
+files you own: invisible Unicode watermarks, statistical text watermarks, and
+file metadata (C2PA, EXIF, XMP) across PNG/JPEG/WebP/SVG/PDF/DOCX/ODT/HTML/
+Markdown. Like `yt-dlp/`, this isn't application code — it's an `install.sh`
+wrapper and a README. Unlike `yt-dlp/`, there's no PyPI package, so
+`install.sh` does a `git clone` into a git-ignored `checkout/` subdirectory
+instead of a package-manager install. `watermarks-remover/README.md` is the
+source of truth for usage.
+
+```bash
+cd watermarks-remover
+./install.sh          # clones upstream into the git-ignored checkout/ dir
+```
+
+- Requires `git` and Python 3.10+; optional `exiftool`, `qpdf`, `c2patool` for
+  full metadata-stripping coverage.
+- All commands run from inside `checkout/`, e.g.
+  `python3 service/scripts/clean_file.py input.md -o output.md` or the HTTP
+  service (`service/scripts/server.py`, default `127.0.0.1:8765`). Docker
+  Compose and an agent-skill install path are also available upstream — see
+  `checkout/README.md` after cloning.
+- `checkout/` is git-ignored (unlike `llm-council/`, this upstream is **not**
+  vendored into the repo — it's a local clone, re-pulled by re-running
+  `install.sh`).
+- Sandbox caveat: cloning needs network egress to `github.com`; optional
+  Ollama/OpenAI-compatible backends or Docker harnesses need their own
+  domains allowed.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
