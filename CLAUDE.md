@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **Public APIs list** | `public-apis/` | Vendored [public-apis/public-apis](https://github.com/public-apis/public-apis) — a curated Markdown reference list of free public APIs by category. No application code, nothing to build or run. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,15 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── public-apis/             # Vendored public-apis/public-apis reference list
+    ├── README.md            # The curated API list itself (source of truth)
+    ├── CONTRIBUTING.md      # Upstream's guidelines for proposing list additions
+    ├── LICENSE              # Upstream MIT license
+    └── NOTES.md             # What this directory is + how to refresh it
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +223,26 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## Public APIs list (`public-apis/`)
+
+A **vendored** snapshot of [`public-apis/public-apis`](https://github.com/public-apis/public-apis)
+— a community-curated Markdown list of free public APIs, organized by category
+(Animals, Finance, Weather, Games, etc.). It's a reference document, not
+application code: there is no build, no server, nothing to run. `public-apis/README.md`
+is the list itself; `public-apis/NOTES.md` explains what was (and wasn't)
+vendored and how to refresh it.
+
+- **Vendored, not a submodule**, same pattern as `llm-council/`: `README.md`,
+  `CONTRIBUTING.md`, and `LICENSE` were copied from upstream with git history
+  stripped. Upstream's `.github/` (issue/PR templates, CI) and `scripts/`
+  (PR-linting tooling) were intentionally left out — they support contributing
+  *to* public-apis/public-apis, not using the list here.
+- Unlike `llm-council/`, upstream here is actively maintained via community
+  PRs, so it's worth periodically re-pulling `README.md` to pick up new/removed
+  APIs. To update: re-fetch the three vendored files from upstream `master` and
+  review the diff.
+- No secrets, no setup steps, no sandbox egress caveats — it's plain text.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
