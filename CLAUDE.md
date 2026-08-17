@@ -16,6 +16,7 @@ as its own mini-project:
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **Ponytail skills** | repo root (`PONYTAIL.md`), `.agents/skills/ponytail*/` | Vendored "lazy senior dev mode" skills (from the `DietrichGebert/ponytail` plugin) that push agents toward the simplest solution that works. |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
+| **Supabase self-hosted stack** | `supabase/` | Vendored copy of the official `supabase/supabase` `docker/` self-hosting setup — Docker Compose stack running Postgres, Auth, PostgREST, Realtime, Storage, Studio, and the rest of the Supabase stack. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
@@ -53,6 +54,14 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
+├── supabase/                # Vendored supabase/supabase docker/ self-hosting stack
+│   ├── docker-compose.yml   # Full Supabase stack (db, auth, rest, realtime, storage, studio, ...)
+│   ├── docker-compose.*.yml # Optional overrides (kong, s3, pg17, ...) layered via COMPOSE_FILE
+│   ├── .env.example         # Upstream template for all secrets, keys, and ports
+│   ├── run.sh / setup.sh    # Upstream helper scripts to manage the compose stack & overrides
+│   ├── volumes/             # Config mounted into containers (kong, db init SQL, logs, functions)
+│   ├── README.md / CONFIG.md / CHANGELOG.md  # Upstream docs (setup, env var reference, changes)
+│   └── dev/                 # Upstream dev-mode compose override (build from source)
 └── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
     ├── README.md            # Install, update, and usage instructions
     ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
@@ -197,6 +206,65 @@ cp .env.example .env               # then paste a real OPENROUTER_API_KEY
 - Sandbox caveat: OpenRouter calls (`openrouter.ai`) must be allowed by the
   sandbox egress policy, and the frontend/backend dev servers bind to localhost.
 
+## Supabase self-hosted stack (`supabase/`)
+
+A **vendored** copy of the `docker/` directory from
+[`supabase/supabase`](https://github.com/supabase/supabase) — the official
+Docker Compose setup for self-hosting the full Supabase platform (Postgres,
+Auth/GoTrue, PostgREST, Realtime, Storage, imgproxy, postgres-meta, Edge
+Runtime, Studio, Logflare/Vector, Supavisor connection pooler). `supabase/README.md`
+and `supabase/CONFIG.md` are the upstream docs; read those before changing
+anything inside — this CLAUDE.md only summarizes conventions.
+
+- **Vendored, not a submodule.** Copied in with git history stripped, same
+  pattern as `llm-council/`. To update, re-pull `docker/` from upstream
+  `supabase/supabase` and review the diff — there is no lockfile pin.
+- **Managed via upstream's own tooling**, not a custom Compose file: `run.sh`
+  wraps `docker compose` (`sh run.sh start|stop|restart|logs|pull|status`) and
+  layers optional override files (`docker-compose.kong.yml`,
+  `docker-compose.s3.yml`, `docker-compose.pg17.yml`, ...) through the
+  `COMPOSE_FILE` variable in `.env`, managed with `sh run.sh config add|remove
+  <name>`. Prefer `run.sh` over hand-editing `COMPOSE_FILE`.
+- **Envoy is the default API gateway**; Kong is available as an opt-in
+  override (`sh run.sh config add kong`).
+- **Everything sensitive lives in `.env`**: Postgres password, JWT secret,
+  anon/service-role keys, dashboard credentials, SMTP creds, etc. The
+  `.env.example` template ships with upstream's well-known demo keys —
+  **all of them must be regenerated** before any real or public deployment
+  (`sh utils/generate-keys.sh`, `sh utils/add-new-auth-keys.sh`).
+
+### Common operations
+
+```bash
+cd supabase
+cp .env.example .env               # then regenerate every secret before real use
+sh run.sh start                    # docker compose up -d --wait
+sh run.sh status                   # docker compose ps
+sh run.sh logs [service]           # follow logs (all or one service)
+sh run.sh pull && sh run.sh recreate   # update images
+sh run.sh stop                     # docker compose down
+```
+
+Studio (the dashboard) is exposed on the port set by `STUDIO_PORT` /
+`KONG_HTTP_PORT` in `.env` (see `.env.example`); Postgres itself is reachable
+on `POSTGRES_PORT` / via Supavisor on `5432`/`6543`.
+
+### Configuration conventions
+
+- **Secrets never get committed.** `.env`, `docker-compose.override.yml`,
+  `.supabase-version`, and `backups/` are git-ignored (see `supabase/.gitignore`,
+  inherited verbatim from upstream); only `.env.example` is tracked.
+- Runtime state — `volumes/db/data`, `volumes/storage`, `volumes/snippets` — is
+  also git-ignored; don't commit it.
+- Docker images are **pinned by tag** inside `docker-compose*.yml` for
+  reproducibility, matching this repo's pin-everything convention. To upgrade,
+  follow upstream's `update.sh` / the [update guide](https://supabase.com/docs/guides/self-hosting/updating)
+  rather than bumping tags by hand.
+- Sandbox caveat: first start pulls a large number of images (db, auth, rest,
+  realtime, storage, imgproxy, meta, studio, kong/envoy, logflare, vector,
+  supavisor) — allow the relevant registries in the sandbox egress policy, and
+  expect `docker compose pull` to take a while on first run.
+
 ## yt-dlp CLI (`yt-dlp/`)
 
 Setup docs for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) CLI — a
@@ -264,8 +332,8 @@ adding a local or plugin-/package-provided skill, just place `SKILL.md` under
   versions) for reproducibility rather than tracking `latest`.
 - There is **no test suite or linter** configured. `npm test` is a placeholder
   that exits non-zero. Verify Composio changes by running the scripts against a
-  real key; verify Stirling-PDF changes with `docker compose config` (validates
-  the compose file) and a local `docker compose up`.
+  real key; verify Stirling-PDF or Supabase changes with `docker compose config`
+  (validates the compose file) and a local `docker compose up` / `sh run.sh start`.
 
 ## Git & contribution workflow
 
