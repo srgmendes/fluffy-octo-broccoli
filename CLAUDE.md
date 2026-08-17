@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **claude-mem** | `claude-mem/` | Setup docs + install script for [claude-mem](https://github.com/thedotmack/claude-mem), a persistent-memory plugin for Claude Code. No application code — installs a user-level plugin/hooks + local worker, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,13 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── claude-mem/              # Setup docs + install script for the claude-mem plugin
+    ├── README.md            # Install, config, update, and uninstall instructions
+    └── install.sh           # npx claude-mem install
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +221,31 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## claude-mem (`claude-mem/`)
+
+Setup docs for [claude-mem](https://github.com/thedotmack/claude-mem) — a
+persistent-memory plugin for Claude Code that captures session activity,
+compresses it, and injects relevant context back into future sessions. Like
+`yt-dlp/`, this isn't application code; it's an `install.sh` wrapper around
+the upstream `npx claude-mem install` and a README documenting install,
+config, update, and uninstall. `claude-mem/README.md` is the source of truth
+for usage.
+
+```bash
+cd claude-mem
+./install.sh          # npx claude-mem install
+```
+
+- Installs via `npx claude-mem install`, which registers Claude Code plugin
+  hooks (`SessionStart`, `UserPromptSubmit`, `PostToolUse`, `Stop`,
+  `SessionEnd`) and runs a local Bun-backed worker storing data in SQLite.
+  Requires Node.js 20.12.0+; Bun and `uv` are auto-installed if missing.
+- All state lives outside this repo, in `~/.claude-mem/` and the user-level
+  Claude Code config — there is no in-repo data directory to git-ignore.
+- Sandbox caveat: the installer needs network egress to
+  `registry.npmjs.org` (and, if cloud sync is enabled, `cmem.ai`) — allow
+  those domains in the sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
