@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **headroom CLI** | `headroom/` | Setup docs + install script for the [headroom](https://github.com/headroomlabs-ai/headroom) context-compression CLI for AI agents. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,13 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── headroom/                # Setup docs + install script for the headroom CLI
     ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+    └── install.sh           # pipx install headroom-ai[all] (falls back to pip3 install --user)
 ```
 
 ## Composio integration (repo root)
@@ -216,6 +220,34 @@ cd yt-dlp
   `.gitkeep`-plus-`.gitignore` pattern as `stirling-pdf/data/`).
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
+  the sandbox egress policy first.
+
+## headroom CLI (`headroom/`)
+
+Setup docs for the [headroom](https://github.com/headroomlabs-ai/headroom)
+CLI — a context compression layer for AI agents that shrinks tool outputs,
+logs, files, RAG chunks, and conversation history before they reach an LLM.
+Like `yt-dlp/`, this isn't application code or a hosted service; it's an
+`install.sh` wrapper and a README documenting how to install, update, and use
+the `headroom` command locally. Everything runs on your machine.
+`headroom/README.md` is the source of truth for usage.
+
+```bash
+cd headroom
+./install.sh          # pipx install "headroom-ai[all]" (falls back to pip3 install --user)
+```
+
+- Installs via `pipx` (falls back to `pip3 install --user`); requires Python
+  3.10+. Upstream also offers `uv tool install`, `npm install headroom-ai`
+  (library only, no CLI), and a Docker image — see `headroom/README.md` for
+  those alternative paths.
+- Core subcommands: `headroom deploy` (turnkey local setup), `headroom wrap
+  <agent>` (wrap Claude Code, Cursor, Codex, aider, etc.), `headroom proxy
+  --port 8787` (drop-in proxy), and `headroom doctor` (health check).
+- Sandbox caveat: installing needs network egress to PyPI
+  (`pypi.org`, `files.pythonhosted.org`) or `ghcr.io` for Docker; running
+  `headroom wrap`/`headroom proxy` needs egress to whatever LLM provider the
+  wrapped agent talks to (e.g. `api.anthropic.com`) — allow those domains in
   the sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
