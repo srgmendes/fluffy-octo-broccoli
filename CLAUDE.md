@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **Ollama CLI** | `ollama/` | Setup docs + install script for the [Ollama](https://github.com/ollama/ollama) local LLM runtime. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,13 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── ollama/                  # Setup docs + install script for the Ollama CLI
     ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+    └── install.sh           # Official installer on Linux; Homebrew on macOS
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +221,28 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## Ollama CLI (`ollama/`)
+
+Setup docs for the [Ollama](https://github.com/ollama/ollama) CLI — a local
+runtime and server for running open-weight LLMs. Unlike the other areas, this
+isn't application code or a hosted service; it's just an `install.sh` wrapper
+and a README documenting how to install and use the `ollama` command locally.
+`ollama/README.md` is the source of truth for usage.
+
+```bash
+cd ollama
+./install.sh          # Linux: official installer; macOS: Homebrew if available
+```
+
+- Linux uses the official `curl -fsSL https://ollama.com/install.sh | sh`
+  installer; macOS uses `brew install ollama` when Homebrew is present,
+  otherwise points to the manual `.dmg` download; Windows isn't scripted —
+  see the README for the manual installer link.
+- No `downloads/`-style scratch directory — Ollama stores pulled models under
+  its own data directory (`~/.ollama` by default), not inside this repo.
+- Sandbox caveat: pulling models needs network egress to `ollama.com` (and
+  its CDN) — allow that domain in the sandbox egress policy first.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
