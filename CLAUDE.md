@@ -229,8 +229,12 @@ runtime:
 - `.claude/skills/<name>` are **symlinks** into `.agents/skills/` so Claude Code
   discovers them.
 
-Currently present: `find-skills` (from `vercel-labs/skills`) and `research`
-(from `mattpocock/skills`), both vendored from GitHub and tracked in
+Currently present: `find-skills` (from `vercel-labs/skills`), `research`
+(from `mattpocock/skills`), and `task-observer` (from
+`rebelytics/one-skill-to-rule-them-all`, "One Skill to Rule Them All" —
+a meta-skill that watches task sessions for skill-improvement
+opportunities and logs them to `skill-observations/log.md` in the
+workspace), all three vendored from GitHub and tracked in
 `skills-lock.json`; plus `chief-content-officer`, a **local** skill added
 directly to the repo (not from a GitHub source, so it has no `skills-lock.json`
 entry); plus the six `ponytail*` skills (`ponytail`, `ponytail-review`,
