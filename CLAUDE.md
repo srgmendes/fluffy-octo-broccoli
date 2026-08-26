@@ -16,7 +16,7 @@ as its own mini-project:
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **Ponytail skills** | repo root (`PONYTAIL.md`), `.agents/skills/ponytail*/` | Vendored "lazy senior dev mode" skills (from the `DietrichGebert/ponytail` plugin) that push agents toward the simplest solution that works. |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
-| **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
+| **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `apple-design`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -33,7 +33,7 @@ changes rarely cross these boundaries.
 ├── package.json             # ESM Node project; depends on @composio/core
 ├── .env.example             # Template for COMPOSIO_API_KEY (root scope)
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
-├── .agents/skills/          # Vendored skill sources (find-skills, research, ponytail*)
+├── .agents/skills/          # Vendored skill sources (find-skills, research, apple-design, ponytail*)
 ├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
 ├── stirling-pdf/            # Self-contained Docker Compose deployment
 │   ├── docker-compose.yml   # Stirling-PDF (pinned 2.14.2) + Caddy proxy
@@ -229,8 +229,9 @@ runtime:
 - `.claude/skills/<name>` are **symlinks** into `.agents/skills/` so Claude Code
   discovers them.
 
-Currently present: `find-skills` (from `vercel-labs/skills`) and `research`
-(from `mattpocock/skills`), both vendored from GitHub and tracked in
+Currently present: `find-skills` (from `vercel-labs/skills`), `research`
+(from `mattpocock/skills`), and `apple-design` (from
+`dickwu/apple-design-skill`), all vendored from GitHub and tracked in
 `skills-lock.json`; plus `chief-content-officer`, a **local** skill added
 directly to the repo (not from a GitHub source, so it has no `skills-lock.json`
 entry); plus the six `ponytail*` skills (`ponytail`, `ponytail-review`,
@@ -240,6 +241,13 @@ ponytail skills come from a plugin's `skills/` dir rather than a single-`SKILL.m
 GitHub skill installed via the `skills` CLI, they have **no `skills-lock.json`
 entry** — their version is pinned instead by
 `.agents/skills/ponytail/.ponytail_version`.
+
+Most skills here are a lone `SKILL.md`. `apple-design` is the exception: it
+ships a `references/` directory (53 Apple HIG guideline documents plus the
+`references/hig-lookup.md` routing table) that `SKILL.md` loads on demand, so
+the whole directory is vendored, not just the one file. Upstream's repo
+scaffolding (`README.md`, `AGENTS.md`, `.cursorrules`, `.gitignore`) is dropped
+— only what the skill reads at runtime is kept.
 
 When adding or updating a GitHub-vendored skill installed through the `skills`
 CLI, update `skills-lock.json` (including the hash) alongside the files. When
