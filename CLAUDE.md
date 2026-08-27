@@ -17,6 +17,7 @@ as its own mini-project:
 | **Ponytail skills** | repo root (`PONYTAIL.md`), `.agents/skills/ponytail*/` | Vendored "lazy senior dev mode" skills (from the `DietrichGebert/ponytail` plugin) that push agents toward the simplest solution that works. |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
+| **MCP servers** | `.mcp.json`, `MCP.md` | Project-scoped Model Context Protocol server config (Playwright, Composio, Firecrawl, Perplexity) that Claude Code picks up automatically. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -27,11 +28,13 @@ changes rarely cross these boundaries.
 ```
 .
 ├── COMPOSIO.md              # Composio setup & usage docs
+├── MCP.md                   # MCP server setup & per-server notes
 ├── PONYTAIL.md              # Ponytail vendored-skills docs
 ├── composio-example.mjs     # Lists Composio toolkits (smoke test for SDK + key)
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth
 ├── package.json             # ESM Node project; depends on @composio/core
-├── .env.example             # Template for COMPOSIO_API_KEY (root scope)
+├── .env.example             # Template for COMPOSIO_API_KEY + MCP keys (root scope)
+├── .mcp.json                # MCP servers: playwright, composio, firecrawl, perplexity
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
 ├── .agents/skills/          # Vendored skill sources (find-skills, research, ponytail*)
 ├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
@@ -217,6 +220,34 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## MCP servers (`.mcp.json`, `MCP.md`)
+
+`.mcp.json` at the repo root configures four Model Context Protocol servers at
+**project scope**, so the config travels with the repo and Claude Code picks it
+up for anyone who checks it out. `MCP.md` is the authoritative setup guide —
+read it before changing anything here.
+
+| Server | Transport | Auth |
+| --- | --- | --- |
+| `playwright` | stdio (`npx @playwright/mcp@latest`) | none |
+| `composio` | HTTP | OAuth (browser sign-in) |
+| `firecrawl` | HTTP | `FIRECRAWL_API_KEY` bearer |
+| `perplexity` | HTTP | `PERPLEXITY_API_KEY` bearer (paid) |
+
+- **Secrets stay out of git.** The two API keys are referenced as `${VAR}` and
+  resolved from the environment — never hardcoded into `.mcp.json`, which *is*
+  a tracked file. Add new key-bearing servers the same way, plus a matching
+  `.env.example` line.
+- **Project scope needs approval.** Each machine approves `.mcp.json` servers
+  once; `claude mcp list` shows connection state and flags missing env vars.
+- The `composio` MCP server is **separate** from the `composio-*.mjs` SDK
+  scripts (see `COMPOSIO.md`) — different auth, different purpose; they coexist.
+- Sandbox caveat: the cloud sandbox's egress policy currently blocks
+  `mcp.firecrawl.dev` and `api.perplexity.ai`, and Composio's OAuth needs a
+  browser the sandbox lacks. Only `playwright` is usable from a web session, and
+  it needs `--executable-path` pointed at the image's Chromium. Details in
+  `MCP.md`.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
