@@ -27,8 +27,9 @@ Because these come from a **plugin repo** (the `skills/` directory of
 `kepano/obsidian-skills`) rather than a single-`SKILL.md` GitHub skill installed
 via the `skills` CLI, they have **no `skills-lock.json` entry** — same rationale
 as the vendored `ponytail*` skills. The vendored version is pinned by
-`.agents/skills/obsidian-markdown/.obsidian_version` (plugin `1.0.1`, upstream
-commit `a1dc48e`).
+`.agents/skills/.obsidian_version` (plugin `1.0.1`, upstream commit `a1dc48e`).
+It sits beside the skill directories rather than inside one of them, since it
+pins all five.
 
 Upstream is MIT-licensed, © Steph Ango (@kepano). The MIT terms require the
 licence text to travel with the copies, so upstream's `LICENSE` is vendored
@@ -69,11 +70,11 @@ for n in obsidian-markdown obsidian-bases json-canvas obsidian-cli defuddle; do
   cp /tmp/obsidian-skills/LICENSE .agents/skills/$n/LICENSE
 done
 # record the new version (from /tmp/obsidian-skills/.claude-plugin/plugin.json)
-printf '<new-version>\n' > .agents/skills/obsidian-markdown/.obsidian_version
+printf '<new-version>\n' > .agents/skills/.obsidian_version
 ```
 
-Note the loop deletes each skill directory first — that wipes both the vendored
-`LICENSE` and the version pin, which is why the recipe restores the licence
-inside the loop and rewrites the pin after it. Commit the updated
-`.agents/skills/` directories, the `LICENSE` copies and `.obsidian_version`
-together, and update the commit SHA above.
+Note the loop deletes each skill directory first, wiping the vendored `LICENSE`
+copies — hence the licence restore inside the loop. The version pin lives outside
+those directories, so it survives; the recipe rewrites it anyway to record the new
+version. Commit the updated `.agents/skills/` directories, the `LICENSE` copies
+and `.obsidian_version` together, and update the commit SHA above.

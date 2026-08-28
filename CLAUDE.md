@@ -247,7 +247,8 @@ Also present, on the same plugin-vendored footing: the five Obsidian skills
 (`obsidian-markdown`, `obsidian-bases`, `json-canvas`, `obsidian-cli`,
 `defuddle`) from `kepano/obsidian-skills` (see `OBSIDIAN.md`). Same reasoning —
 no `skills-lock.json` entry; pinned by
-`.agents/skills/obsidian-markdown/.obsidian_version`. Unlike the others, three
+`.agents/skills/.obsidian_version` — beside the skill directories rather than
+inside one, since it pins all five. Unlike the others, three
 of these ship `references/` subdirectories alongside `SKILL.md`, so vendor the
 whole skill directory rather than just the `SKILL.md`.
 
