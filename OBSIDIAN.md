@@ -30,7 +30,11 @@ as the vendored `ponytail*` skills. The vendored version is pinned by
 `.agents/skills/obsidian-markdown/.obsidian_version` (plugin `1.0.1`, upstream
 commit `a1dc48e`).
 
-Upstream is MIT-licensed, © Steph Ango (@kepano).
+Upstream is MIT-licensed, © Steph Ango (@kepano). The MIT terms require the
+licence text to travel with the copies, so upstream's `LICENSE` is vendored
+verbatim into **each** of the five skill directories — they sit as siblings
+among unrelated skills under `.agents/skills/`, with no shared parent directory
+to hold one copy. All five files are byte-identical to upstream's.
 
 ## Usage
 
@@ -62,11 +66,14 @@ git clone --depth 1 https://github.com/kepano/obsidian-skills.git /tmp/obsidian-
 for n in obsidian-markdown obsidian-bases json-canvas obsidian-cli defuddle; do
   rm -rf .agents/skills/$n
   cp -R /tmp/obsidian-skills/skills/$n .agents/skills/$n
+  cp /tmp/obsidian-skills/LICENSE .agents/skills/$n/LICENSE
 done
 # record the new version (from /tmp/obsidian-skills/.claude-plugin/plugin.json)
 printf '<new-version>\n' > .agents/skills/obsidian-markdown/.obsidian_version
 ```
 
-Note the loop deletes each skill directory first, so the version pin is rewritten
-afterwards. Commit the updated `.agents/skills/` directories and
-`.obsidian_version` together, and update the commit SHA above.
+Note the loop deletes each skill directory first — that wipes both the vendored
+`LICENSE` and the version pin, which is why the recipe restores the licence
+inside the loop and rewrites the pin after it. Commit the updated
+`.agents/skills/` directories, the `LICENSE` copies and `.obsidian_version`
+together, and update the commit SHA above.
