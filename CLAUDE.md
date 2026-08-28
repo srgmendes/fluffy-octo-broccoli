@@ -16,7 +16,8 @@ as its own mini-project:
 | **Stirling-PDF deployment** | `stirling-pdf/` | Docker Compose stack running self-hosted Stirling-PDF behind a Caddy reverse proxy (HTTPS, basic auth, security headers, rate limiting). |
 | **Ponytail skills** | repo root (`PONYTAIL.md`), `.agents/skills/ponytail*/` | Vendored "lazy senior dev mode" skills (from the `DietrichGebert/ponytail` plugin) that push agents toward the simplest solution that works. |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
-| **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
+| **Obsidian skills** | repo root (`OBSIDIAN.md`), `.agents/skills/obsidian-*`, `json-canvas/`, `defuddle/` | Vendored skills (from the `kepano/obsidian-skills` plugin) for authoring Obsidian vault files — Markdown, Bases, Canvas — plus the Obsidian and Defuddle CLIs. |
+| **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`, the Obsidian set) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -28,12 +29,13 @@ changes rarely cross these boundaries.
 .
 ├── COMPOSIO.md              # Composio setup & usage docs
 ├── PONYTAIL.md              # Ponytail vendored-skills docs
+├── OBSIDIAN.md              # Obsidian vendored-skills docs
 ├── composio-example.mjs     # Lists Composio toolkits (smoke test for SDK + key)
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth
 ├── package.json             # ESM Node project; depends on @composio/core
 ├── .env.example             # Template for COMPOSIO_API_KEY (root scope)
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
-├── .agents/skills/          # Vendored skill sources (find-skills, research, ponytail*)
+├── .agents/skills/          # Vendored skill sources (find-skills, research, ponytail*, obsidian set)
 ├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
 ├── stirling-pdf/            # Self-contained Docker Compose deployment
 │   ├── docker-compose.yml   # Stirling-PDF (pinned 2.14.2) + Caddy proxy
@@ -240,6 +242,14 @@ ponytail skills come from a plugin's `skills/` dir rather than a single-`SKILL.m
 GitHub skill installed via the `skills` CLI, they have **no `skills-lock.json`
 entry** — their version is pinned instead by
 `.agents/skills/ponytail/.ponytail_version`.
+
+Also present, on the same plugin-vendored footing: the five Obsidian skills
+(`obsidian-markdown`, `obsidian-bases`, `json-canvas`, `obsidian-cli`,
+`defuddle`) from `kepano/obsidian-skills` (see `OBSIDIAN.md`). Same reasoning —
+no `skills-lock.json` entry; pinned by
+`.agents/skills/obsidian-markdown/.obsidian_version`. Unlike the others, three
+of these ship `references/` subdirectories alongside `SKILL.md`, so vendor the
+whole skill directory rather than just the `SKILL.md`.
 
 When adding or updating a GitHub-vendored skill installed through the `skills`
 CLI, update `skills-lock.json` (including the hash) alongside the files. When
