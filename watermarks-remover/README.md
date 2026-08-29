@@ -21,11 +21,57 @@ ships its own scripts and needs no service).
 
 ## Requirements
 
-- `git` and Python **3.10+** (stdlib only — the service has no dependencies)
-- Optional, auto-detected when on `PATH`:
-  - [`qpdf`](https://qpdf.sourceforge.io/) — **required** for a real PDF strip
-  - [`exiftool`](https://exiftool.org/) — residual metadata strip
-  - [`c2patool`](https://github.com/contentauth/c2pa-rs/tree/main/cli) — inspect C2PA manifests
+`git` and Python **3.10+** are all you need — the service is stdlib-only and has
+no Python dependencies.
+
+Everything else is an **optional external CLI**, auto-detected on `PATH` and
+reported by `/capabilities`. Each one widens what can actually be stripped:
+
+| Tool | Unlocks | Without it |
+| --- | --- | --- |
+| [`qpdf`](https://qpdf.sourceforge.io/) | Structural PDF rebuild | PDF strips are **incomplete** |
+| [`exiftool`](https://exiftool.org/) | Residual EXIF/XMP/doc-property strip | Metadata survives in several formats |
+| [`c2patool`](https://github.com/contentauth/c2pa-rs/tree/main/cli) | Reads C2PA manifests, so inspection can *confirm* one rather than infer it from JUMBF bytes | Detection is heuristic-only |
+| [`ghostscript`](https://www.ghostscript.com/) | PDF **deep image pass** — a `pdfwrite` re-distill reaching metadata *inside images embedded in a PDF* (`--deep-images`) | That stage is skipped; the outer PDF is still cleaned |
+
+### Installing them
+
+Three of the four are in the usual package repositories:
+
+```bash
+# Debian / Ubuntu
+sudo apt-get install qpdf libimage-exiftool-perl ghostscript
+# macOS
+brew install qpdf exiftool ghostscript
+```
+
+`c2patool` ships only as a GitHub release binary — there is no distro package,
+and `cargo install c2patool` needs crates.io access:
+
+```bash
+V=c2patool-v0.27.16          # pin a release; check upstream for newer
+curl -sL -o c2patool.tar.gz \
+  "https://github.com/contentauth/c2pa-rs/releases/download/$V/$V-x86_64-unknown-linux-gnu.tar.gz"
+tar xzf c2patool.tar.gz
+sudo install -m 0755 c2patool/c2patool /usr/local/bin/c2patool
+c2patool --version
+```
+
+Note that upstream publishes **no checksums or signatures** for these release
+assets, so that download is trusted on HTTPS alone. Verify it yourself if that
+matters to you; the `v0.27.16` Linux x86-64 tarball is
+`sha256:62eed34f0c90a24b696b1969c8aad4340e11ec7264e1cf6fc375ad15c1db7663`.
+
+### Restart the service after installing a tool
+
+**The service probes for these tools once, at startup, and caches the result.**
+Installing a tool while it is running changes nothing — `/capabilities` keeps
+reporting `false` and the cleaning pipeline keeps skipping that stage. Restart
+the service, then confirm:
+
+```bash
+curl -s http://127.0.0.1:8765/capabilities   # "tools": { ... all true ... }
+```
 
 ## Install
 
@@ -126,5 +172,13 @@ must allow it. The service itself binds to loopback and makes no outbound calls
 unless you opt into detection backends. `curl` against the local service needs
 `--noproxy 127.0.0.1` in the Claude Code cloud sandbox, where `HTTPS_PROXY` is
 set globally.
+
+The optional tools install fine in the Claude Code cloud sandbox: `apt-get`
+reaches the Ubuntu archive (third-party PPAs are blocked, but none are needed),
+and `github.com` release downloads work, which is how `c2patool` gets in.
+`crates.io` is blocked there (403), so `cargo install c2patool` is not an
+option. All of it lands in the container, not the repo — a fresh session starts
+without these tools, which is why they are documented here rather than pinned
+anywhere.
 
 Full details: [upstream README](https://github.com/guillaumemeyer/watermarks-remover#readme).

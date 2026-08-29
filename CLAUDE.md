@@ -253,8 +253,14 @@ python3 src/service/scripts/server.py --host 127.0.0.1 --port 8765   # run the s
   `.claude/skills/`), **not** in this repo's `.agents/skills/` + symlink setup —
   it's installed by upstream's own `install_skill.py`, so it has no
   `skills-lock.json` entry.
-- Optional CLI tools are auto-detected when on `PATH`: `qpdf` (**required** for a
-  real PDF strip), `exiftool`, `c2patool`.
+- Optional CLI tools are auto-detected when on `PATH` and reported by
+  `/capabilities`: `qpdf` (**required** for a real PDF strip), `exiftool`,
+  `ghostscript` (PDF deep-image pass), and `c2patool` (confirms C2PA manifests;
+  GitHub-release binary only, no distro package). The area README has the
+  install commands. **The service probes for them once at startup and caches the
+  result — restart it after installing one**, or `/capabilities` keeps reporting
+  `false`. They install into the machine/container, not the repo, so an
+  ephemeral sandbox starts without them.
 - Sandbox caveat: `install.sh` needs egress to `github.com`. The service binds to
   loopback and makes no outbound calls; `curl` against it needs
   `--noproxy 127.0.0.1` in the sandbox, where `HTTPS_PROXY` is set globally.
