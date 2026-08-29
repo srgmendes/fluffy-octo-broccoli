@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **API Mega List extract** | `api-mega-list/` | CSV extracts of the MCP servers listed in the third-party `cporter202/api-mega-list` directory, plus the script that regenerates them. Derived data, not a deployment. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,14 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── api-mega-list/           # MCP-server CSV extracts from a third-party API directory
+    ├── README.md            # Provenance, column/signal reference, caveats
+    ├── build-mcp-dataset.py # Regenerates every CSV from a clone of the upstream repo
+    └── *.csv                # 142 MCP servers, plus the raw/excluded working sets
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +222,26 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## API Mega List extract (`api-mega-list/`)
+
+CSV extracts of the MCP servers listed in
+[`cporter202/api-mega-list`](https://github.com/cporter202/api-mega-list), a
+third-party directory of ~11,860 Apify actors. **Derived data, not a
+deployment** — four CSVs plus `build-mcp-dataset.py`, which regenerates them
+from a clone of the upstream repo. `api-mega-list/README.md` is the source of
+truth for the columns, the `mcp_signal` classification rules, and the caveats.
+
+- Upstream's own `mcp-servers-*` category is unreliable in both directions, so
+  the script classifies **every table row in every category** rather than
+  trusting the category label. `mcp-servers-real.csv` (142 rows) is the output
+  that matters; the other three are working sets kept for auditing the filter.
+- **The rows are unverified claims.** Classification reads upstream's marketing
+  text; no entry was confirmed to actually serve MCP, because `apify.com` was
+  blocked by the sandbox egress policy. Allowing `api.apify.com` would let each
+  actor be checked against Apify's public actor API.
+- Regenerate rather than hand-edit the CSVs, and note the upstream commit when
+  refreshing — the extract is point-in-time.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
