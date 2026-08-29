@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **watermarks-remover** | `watermarks-remover/` | Setup docs + install script for [guillaumemeyer/watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover) — an agent skill plus a stdlib-Python HTTP service that strips AI provenance marks (invisible Unicode, C2PA, EXIF/XMP) from files. Upstream is cloned into a git-ignored `src/`. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,14 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── watermarks-remover/      # Setup docs + install script for watermarks-remover
+    ├── README.md            # Install, service, CLI usage, scope & caveats
+    ├── install.sh           # Clones upstream @ pinned tag into src/, installs the skill
+    └── src/                 # Git-ignored upstream checkout (created by install.sh)
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +222,42 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## watermarks-remover (`watermarks-remover/`)
+
+Setup docs for
+[`guillaumemeyer/watermarks-remover`](https://github.com/guillaumemeyer/watermarks-remover)
+— an agent skill plus a small HTTP service that strips **AI provenance marks**
+(invisible Unicode, C2PA manifests, EXIF/XMP, document properties) from text and
+files. Same shape as `yt-dlp/`: no application code here, just an `install.sh`
+wrapper and a README. `watermarks-remover/README.md` is the source of truth.
+
+```bash
+cd watermarks-remover
+./install.sh                                   # skill -> ~/.claude/skills
+./install.sh claude-project /path/to/project   # skill -> <project>/.claude/skills
+./install.sh none                              # clone/update src/ only
+python3 src/service/scripts/server.py --host 127.0.0.1 --port 8765   # run the service
+```
+
+- **Upstream is vendored by reference, not by copy.** `install.sh` clones it
+  into `src/`, which is git-ignored — unlike `llm-council/`, whose source is
+  checked in. Nothing from upstream is tracked here.
+- **Pinned to `v0.6.0`** via the `WATERMARKS_VERSION` default in `install.sh`.
+  To upgrade, bump that default and the version references in the area README in
+  the same commit (same convention as the Stirling-PDF image tag).
+- Two halves: the skill (`remove-ai-marks`) is markdown-only and talks HTTP; the
+  service (`src/service/scripts/server.py`) needs Python 3.10+ **stdlib only**.
+  `clean-user-facing-text` is a text-only, self-contained alternative skill.
+- The installed skill lands in `~/.claude/skills` (or a target project's
+  `.claude/skills/`), **not** in this repo's `.agents/skills/` + symlink setup —
+  it's installed by upstream's own `install_skill.py`, so it has no
+  `skills-lock.json` entry.
+- Optional CLI tools are auto-detected when on `PATH`: `qpdf` (**required** for a
+  real PDF strip), `exiftool`, `c2patool`.
+- Sandbox caveat: `install.sh` needs egress to `github.com`. The service binds to
+  loopback and makes no outbound calls; `curl` against it needs
+  `--noproxy 127.0.0.1` in the sandbox, where `HTTPS_PROXY` is set globally.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
