@@ -17,6 +17,7 @@ as its own mini-project:
 | **Ponytail skills** | repo root (`PONYTAIL.md`), `.agents/skills/ponytail*/` | Vendored "lazy senior dev mode" skills (from the `DietrichGebert/ponytail` plugin) that push agents toward the simplest solution that works. |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
+| **ECC agent harness** | `.claude/` (agents, skills, commands, rules, hooks, scripts) | [ECC](https://github.com/affaan-m/ECC) 2.2.0 installed project-locally via its `claude-project` target (`full` profile, hooks enabled). Generated config, not hand-written. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -34,7 +35,15 @@ changes rarely cross these boundaries.
 ├── .env.example             # Template for COMPOSIO_API_KEY (root scope)
 ├── skills-lock.json         # Pins vendored agent skills by source + hash
 ├── .agents/skills/          # Vendored skill sources (find-skills, research, ponytail*)
-├── .claude/skills/          # Symlinks into .agents/skills so Claude Code sees them
+├── .claude/                 # Claude Code config: hand-maintained symlinks + generated ECC install
+│   ├── skills/              # 9 symlinks into .agents/skills + 286 ECC skill dirs
+│   ├── agents/              # 68 ECC subagents (generated)
+│   ├── commands/            # 94 ECC slash commands (generated)
+│   ├── rules/ecc/           # 122 ECC rule files (generated)
+│   ├── hooks/hooks.json     # ECC hook runtime wiring (generated)
+│   ├── scripts/             # ECC runtime + 53 hook scripts (generated)
+│   ├── mcp-configs/         # ECC MCP server templates, placeholder creds only
+│   └── ecc/install-state.json  # Git-ignored: machine-specific install record
 ├── stirling-pdf/            # Self-contained Docker Compose deployment
 │   ├── docker-compose.yml   # Stirling-PDF (pinned 2.14.2) + Caddy proxy
 │   ├── Caddyfile            # Proxy config: HTTPS, basic auth, headers, rate limit
@@ -217,6 +226,43 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## ECC agent harness (`.claude/`)
+
+[ECC](https://github.com/affaan-m/ECC) is an agent harness — a bundle of
+subagents, skills, slash commands, rules, and hooks for Claude Code. It is
+installed **project-locally** into `.claude/`, so it applies to anyone running
+Claude Code in this repo and to no other project.
+
+- **Version 2.2.0**, installed from the upstream repo at commit `005eff4`
+  using ECC's own installer:
+
+  ```bash
+  node <ecc-checkout>/scripts/install-apply.js \
+      --target claude-project --profile full --enable-hooks
+  ```
+
+  `--target claude-project` writes to `./.claude/` instead of `~/.claude/`.
+  `--profile full` selects every classified module; `--enable-hooks` is ECC's
+  required explicit consent for the automatic hook runtime.
+- **Everything under `.claude/` except the `skills/*` symlinks is generated.**
+  Don't hand-edit it — re-run the installer (a newer ECC checkout, same flags)
+  and commit the diff. Adding `--dry-run --json` prints the plan without
+  touching the tree.
+- **Installed surface:** 68 agents, 286 skills, 94 commands, 122 rules,
+  53 hook scripts, plus `mcp-configs/mcp-servers.json` (placeholder
+  credentials only — fill them in locally, never commit real ones).
+- **Hooks are live.** `.claude/hooks/hooks.json` wires PreToolUse / PostToolUse
+  / SessionStart / Stop hooks to the Node and Python scripts in
+  `.claude/scripts/hooks/`. They run automatically in Claude Code sessions here.
+  To install without them, re-run with `--no-hooks` instead of `--enable-hooks`.
+- **`.claude/ecc/install-state.json` is git-ignored.** It is a 548 KB record of
+  1048 absolute paths under this checkout's directory — machine-specific runtime
+  state, regenerated on every install, matching the repo's convention of not
+  committing runtime data.
+- **No collisions with the vendored skills.** ECC's 286 skill directories and
+  the 9 existing `.claude/skills/*` symlinks have disjoint names; the installer
+  applied 1048 operations with zero skipped and zero overwrites.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
