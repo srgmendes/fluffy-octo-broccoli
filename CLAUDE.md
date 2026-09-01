@@ -18,6 +18,7 @@ as its own mini-project:
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
+| **FreeLLMAPI gateway** | `freellmapi/` | Docker Compose deployment of [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) — an OpenAI-compatible endpoint that pools the free tiers of ~34 LLM providers. Config only; the app comes from the upstream prebuilt image. |
 
 When asked to work on something, first figure out **which area** it belongs to;
 changes rarely cross these boundaries.
@@ -53,10 +54,14 @@ changes rarely cross these boundaries.
 │   ├── CLAUDE.md            # Upstream architecture / implementation notes
 │   ├── backend/             # FastAPI app: config, openrouter client, council logic, storage
 │   └── frontend/            # React + Vite UI (npm; deps pinned in package-lock.json)
-└── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
-    ├── README.md            # Install, update, and usage instructions
-    ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
-    └── downloads/           # Git-ignored scratch spot for local downloads
+├── yt-dlp/                  # Setup docs + install script for the yt-dlp CLI
+│   ├── README.md            # Install, update, and usage instructions
+│   ├── install.sh           # pipx install yt-dlp (falls back to pip3 install --user)
+│   └── downloads/           # Git-ignored scratch spot for local downloads
+└── freellmapi/              # Docker Compose deployment of the FreeLLMAPI gateway
+    ├── docker-compose.yml   # Upstream ghcr.io image (pinned v0.9.0) on :3001
+    ├── .env.example         # ENCRYPTION_KEY, port/bind, analytics retention, proxy
+    └── README.md            # Operator documentation
 ```
 
 ## Composio integration (repo root)
@@ -217,6 +222,44 @@ cd yt-dlp
 - Sandbox caveat: downloading needs network egress to whatever site is being
   pulled from (e.g. `youtube.com`, `googlevideo.com`) — allow those domains in
   the sandbox egress policy first.
+
+## FreeLLMAPI gateway (`freellmapi/`)
+
+A Docker Compose deployment of [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi)
+— an OpenAI-compatible gateway that pools the free tiers of ~34 LLM providers
+behind one `/v1` endpoint, stores provider keys encrypted, and falls over to the
+next provider when one is rate-limited. Like `stirling-pdf/`, this directory is
+**infrastructure config only** — no application code. `freellmapi/README.md` is
+the operator guide for this deployment; the upstream repo's `docs/` is the
+source of truth for the app itself.
+
+```bash
+cd freellmapi
+cp .env.example .env               # then set ENCRYPTION_KEY (openssl rand -hex 32)
+docker compose up -d               # pulls the pinned upstream image
+docker compose logs -f             # follow logs
+docker compose pull && docker compose up -d   # update after bumping the tag
+docker compose down                # stop (data volume kept; -v destroys it)
+```
+
+- **Not vendored.** Only the compose file, `.env.example`, and README are
+  tracked; the app is the upstream `ghcr.io/tashfeenahmed/freellmapi` image,
+  **pinned by release tag** (`v0.9.0`) per the repo-wide convention. To upgrade,
+  bump the tag in `docker-compose.yml` and the version reference in
+  `freellmapi/README.md` to match.
+- **Secrets never get committed.** `.env` holds the required `ENCRYPTION_KEY`
+  (which encrypts the stored provider keys at rest) and is git-ignored; only
+  `.env.example` is tracked. Losing that key makes every stored provider key
+  undecryptable.
+- **Runtime tuning goes through `.env`** (port, host bind, analytics retention,
+  outbound `PROXY_URL`) — prefer adding a variable over editing the compose file.
+- **Not exposed by default:** the port is published on `127.0.0.1` only. The
+  service is single-user and guarded solely by its unified API key, so it must
+  not face the internet; `HOST_BIND=0.0.0.0` is for trusted LANs only.
+- State (SQLite: encrypted keys, usage counters, analytics) lives in the named
+  Docker volume `freellmapi-data`, not in the repo — nothing to git-ignore.
+- Sandbox caveat: needs egress to `ghcr.io` (image pull), `freellmapi.co` (the
+  signed model-catalog feed), and each provider API host you add a key for.
 
 ## Agent skills (`.agents/`, `.claude/`, `skills-lock.json`)
 
