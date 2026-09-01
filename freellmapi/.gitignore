@@ -1,0 +1,2 @@
+# Local environment file with the real encryption key — never commit.
+.env
