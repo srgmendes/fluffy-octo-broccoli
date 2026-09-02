@@ -17,6 +17,7 @@ as its own mini-project:
 | **Ponytail skills** | repo root (`PONYTAIL.md`), `.agents/skills/ponytail*/` | Vendored "lazy senior dev mode" skills (from the `DietrichGebert/ponytail` plugin) that push agents toward the simplest solution that works. |
 | **LLM Council app** | `llm-council/` | Vendored local web app (FastAPI backend + React/Vite frontend) that queries a "council" of LLMs via OpenRouter, has them peer-review each other anonymously, and a chairman model synthesizes a final answer. |
 | **Agent skills** | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | Vendored third-party Claude skills (`find-skills`, `research`, `ponytail*`) pinned by hash or version. |
+| **Imported skill register** | `SKILLS.md` | Appendix A: a written register of 27 skills installed at the **account** level (not vendored here), and how they collide with the owner's numbered Skills 0–6. Documentation only — no code. |
 | **yt-dlp CLI** | `yt-dlp/` | Setup docs + install script for the [yt-dlp](https://github.com/yt-dlp/yt-dlp) media-downloader CLI. No application code — a local tool, not a hosted service. |
 
 When asked to work on something, first figure out **which area** it belongs to;
@@ -28,6 +29,7 @@ changes rarely cross these boundaries.
 .
 ├── COMPOSIO.md              # Composio setup & usage docs
 ├── PONYTAIL.md              # Ponytail vendored-skills docs
+├── SKILLS.md                # Appendix A: register of account-level imported skills
 ├── composio-example.mjs     # Lists Composio toolkits (smoke test for SDK + key)
 ├── composio-connect.mjs     # Connects an app/toolkit to your account via OAuth
 ├── package.json             # ESM Node project; depends on @composio/core
@@ -240,6 +242,15 @@ ponytail skills come from a plugin's `skills/` dir rather than a single-`SKILL.m
 GitHub skill installed via the `skills` CLI, they have **no `skills-lock.json`
 entry** — their version is pinned instead by
 `.agents/skills/ponytail/.ponytail_version`.
+
+**Account-level skills are a separate thing.** `SKILLS.md` holds Appendix A, a
+register of 27 skills imported from `claude-skills-all.zip` and installed on the
+owner's Claude account rather than vendored into this repo. Nothing under
+`.agents/skills/` corresponds to them, and they carry no `skills-lock.json`
+entry. The appendix records what is installed, three folder-vs-invocation name
+mismatches, and where those skills conflict with the owner's numbered Skills 0–6
+(maintained outside this repo). Treat it as a registry to keep current when that
+library changes — not as an install manifest this repo acts on.
 
 When adding or updating a GitHub-vendored skill installed through the `skills`
 CLI, update `skills-lock.json` (including the hash) alongside the files. When
